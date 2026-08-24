@@ -72,8 +72,8 @@ input::placeholder { color: #a2a5b3; }
       </div>
     </sc-if>
 
-    <sc-if value="{{ vSched }}" hint-placeholder-val="{{ true }}">
-      <section data-screen-label="Schedule">
+    <sc-if value="{{ vSched }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="Full schedule">
         <div style="background:linear-gradient(135deg,#4f7df9,#7a5cf0);border-radius:22px;padding:18px 18px 16px;margin-top:14px;color:#fff;box-shadow:0 10px 28px rgba(90,105,240,0.35)">
           <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;opacity:0.75">{{ hero.kicker }}</div>
           <div style="font-size:24px;font-weight:800;letter-spacing:-0.02em;margin-top:2px">{{ hero.title }}</div>
@@ -152,7 +152,7 @@ input::placeholder { color: #a2a5b3; }
       </section>
     </sc-if>
 
-    <sc-if value="{{ vMine }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ vMine }}" hint-placeholder-val="{{ true }}">
       <section data-screen-label="My turns">
         <sc-if value="{{ mineEmpty }}">
           <div style="background:#fff;border-radius:20px;box-shadow:0 1px 3px rgba(23,24,28,0.06);padding:20px;margin-top:14px">
@@ -216,7 +216,12 @@ input::placeholder { color: #a2a5b3; }
               </button>
             </sc-for>
           </div>
-          <sc-if value="{{ noUpcoming }}"><p style="margin:10px 4px;font-size:13px;color:#8a8d99">{{ L.noUpcoming }}</p></sc-if>
+          <sc-if value="{{ noUpcoming }}">
+            <div style="background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(23,24,28,0.06);padding:20px;text-align:center">
+              <p style="margin:0 0 12px;font-size:13.5px;color:#8a8d99">{{ L.noUpcoming }}</p>
+              <button type="button" onClick="{{ goSched }}" style="border:none;background:#e8edfd;color:#2f56c4;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer">{{ L.seeFull }}</button>
+            </div>
+          </sc-if>
           <a href="{{ icsHref }}" download="my-livestream-schedule.ics" style="display:inline-flex;align-items:center;gap:7px;background:#e8edfd;color:#2f56c4;border-radius:999px;padding:10px 17px;font-size:13.5px;font-weight:700;margin-top:14px">{{ ic.download }}{{ L.addCalendar }}</a>
         </sc-if>
       </section>
@@ -585,7 +590,7 @@ class Component extends DCLogic {
     me: this.pref('me', ''),
     deep: this.readDeep(),
     ready: false, err: '', busy: '',
-    view: 'sched', admin: false, pin: '',
+    view: 'mine', admin: false, pin: '',
     dlg: null, toast: '', showPast: false, isDesktop: false,
     loginPin: '', loginErr: '', tick: 0,
     year: '', monthLimit: 6, remDraft: null,
@@ -800,7 +805,8 @@ class Component extends DCLogic {
 
   dict(lang) {
     const en = {
-      tabSched: 'Schedule', tabMine: 'My turns', tabStats: 'Stats', tabAdmin: 'Admin',
+      tabSched: 'Full schedule', tabMine: 'My turns', tabStats: 'Stats', tabAdmin: 'Admin',
+      seeFull: 'See the full schedule',
       nextService: 'Next service', yourNext: 'Your next turn', morning: 'Morning', evening: 'Evening',
       today: 'Today', liveNow: 'Happening now', confirm: 'Confirm', confirmed: 'Confirmed',
       confirmOpens: 'You can confirm {when}, once the reminder goes out', soon: 'shortly',
@@ -847,7 +853,8 @@ class Component extends DCLogic {
       blocked: 'The server rejected the call. Turn off "Verify JWT" on the notify function.'
     };
     const ru = {
-      tabSched: 'Расписание', tabMine: 'Мои смены', tabStats: 'Статистика', tabAdmin: 'Админ',
+      tabSched: 'Полное расписание', tabMine: 'Мои смены', tabStats: 'Статистика', tabAdmin: 'Админ',
+      seeFull: 'Открыть полное расписание',
       nextService: 'Следующая служба', yourNext: 'Ваша следующая смена', morning: 'Утренняя', evening: 'Вечерняя',
       today: 'Сегодня', liveNow: 'Идёт сейчас', confirm: 'Подтвердить', confirmed: 'Подтверждено',
       confirmOpens: 'Подтвердить можно {when}, когда придёт напоминание', soon: 'скоро',
@@ -1510,7 +1517,8 @@ class Component extends DCLogic {
       afSummary = Object.keys(c).map(id => this.nameOf(db, id, lang) + ' ' + c[id]).join(' · ');
     }
 
-    const tabDefs = [['sched', L.tabSched, 'cal'], ['mine', L.tabMine, 'user'], ['stats', L.tabStats, 'chart'], ['admin', L.tabAdmin, 'gear']];
+    // My turns leads: it is the one screen a member actually needs.
+    const tabDefs = [['mine', L.tabMine, 'user'], ['sched', L.tabSched, 'cal'], ['stats', L.tabStats, 'chart'], ['admin', L.tabAdmin, 'gear']];
     const tabs = tabDefs.map(([k, labelTxt, icn]) => ({
       key: k, label: labelTxt, icon: this.icon(icn, 20),
       onTap: () => this.setState({ view: k }),
@@ -1543,6 +1551,7 @@ class Component extends DCLogic {
       // Highlighted when it is their decision, plain when they are just
       // waiting on someone else's reply.
       myReqs, hasMyReqs: myReqs.length > 0,
+      goSched: () => this.setState({ view: 'sched' }),
       pastLabel: st.showPast ? L.hidePast : L.showPast,
       togglePast: () => this.setState(s => ({ showPast: !s.showPast, monthLimit: this.PAGE })),
       yearPills, hasYears: yearPills.length > 0,
@@ -1648,7 +1657,7 @@ class Component extends DCLogic {
       onSendTest: () => this.act('test', () => this.fn({ event: 'test' })),
       queueRows,
       onOpenPin: () => this.setState({ dlg: { type: 'pin', pinNew: '' } }),
-      onLogout: () => this.setState({ admin: false, pin: '', view: 'sched' }),
+      onLogout: () => this.setState({ admin: false, pin: '', view: 'mine' }),
       stop: e => e.stopPropagation(),
       closeDlg: () => this.setState({ dlg: null }),
       dWho: D('who'), whoOpts, viewerChecked: !me,
