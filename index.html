@@ -14,6 +14,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Stream Team">
 <meta name="theme-color" content="#f2f3f8">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 html, body { margin: 0; background: #f2f3f8; color: #17181c; font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 1.45; }
 *, *::before, *::after { box-sizing: border-box; }
@@ -26,6 +28,7 @@ a:hover { color: #2f56c4; }
 input::placeholder { color: #a2a5b3; }
 @keyframes rise { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes sheet { from { transform: translateY(36px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </helmet>
 <div style="min-height:100vh;display:flex;flex-direction:column">
@@ -39,7 +42,6 @@ input::placeholder { color: #a2a5b3; }
         <button type="button" onClick="{{ setEn }}" style="{{ langEnStyle }}">EN</button>
         <button type="button" onClick="{{ setRu }}" style="{{ langRuStyle }}">RU</button>
       </div>
-      <button type="button" onClick="{{ openFeed }}" aria-label="Bot feed" style="width:36px;height:36px;border-radius:50%;border:none;background:#fff;box-shadow:0 1px 3px rgba(23,24,28,0.08);display:grid;place-items:center;cursor:pointer;color:#3b6ef6">{{ ic.send }}</button>
       <button type="button" onClick="{{ openWho }}" style="display:flex;align-items:center;gap:7px;border:none;background:#fff;box-shadow:0 1px 3px rgba(23,24,28,0.08);border-radius:999px;padding:4px 12px 4px 4px;cursor:pointer">
         <span style="{{ meAvStyle }}">{{ meInitial }}</span>
         <span style="font-size:13px;font-weight:600">{{ meLabel }}</span>
@@ -55,6 +57,13 @@ input::placeholder { color: #a2a5b3; }
   </header>
 
   <main style="width:100%;max-width:760px;margin:0 auto;padding:0 16px 118px;flex:1;animation:rise .3s ease both">
+
+    <sc-if value="{{ banner }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ bannerStyle }}">
+        <span style="flex:1">{{ banner }}</span>
+        <sc-if value="{{ bannerRetry }}"><button type="button" onClick="{{ onRetry }}" style="border:none;background:rgba(255,255,255,0.35);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:700;cursor:pointer;color:inherit">{{ L.retry }}</button></sc-if>
+      </div>
+    </sc-if>
 
     <sc-if value="{{ vSched }}" hint-placeholder-val="{{ true }}">
       <section data-screen-label="Schedule">
@@ -206,8 +215,8 @@ input::placeholder { color: #a2a5b3; }
             <div style="font-size:19px;font-weight:700;margin-top:10px">{{ L.tabAdmin }}</div>
             <label style="display:block;font-size:12px;font-weight:600;color:#8a8d99;margin:12px 0 5px">{{ L.pin }}</label>
             <input type="password" inputMode="numeric" value="{{ loginPin }}" onChange="{{ onLoginPin }}" placeholder="····" style="width:100%;border:none;background:#eef0f6;border-radius:12px;padding:11px 13px;font-size:15px">
-            <sc-if value="{{ loginErr }}"><div style="font-size:12.5px;color:#e5484d;margin-top:7px;font-weight:600">{{ L.wrongPin }}</div></sc-if>
-            <button type="submit" style="width:100%;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;margin-top:12px">{{ L.signin }}</button>
+            <sc-if value="{{ loginErr }}"><div style="font-size:12.5px;color:#e5484d;margin-top:7px;font-weight:600">{{ loginErr }}</div></sc-if>
+            <button type="submit" style="width:100%;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14.5px;font-weight:700;cursor:pointer;margin-top:12px">{{ signinLabel }}</button>
             <div style="font-size:11.5px;margin-top:10px;color:#a2a5b3">{{ L.pinHint }}</div>
           </form>
         </sc-if>
@@ -271,7 +280,6 @@ input::placeholder { color: #a2a5b3; }
               </sc-for>
             </div>
             <button type="button" onClick="{{ onSendTest }}" style="align-self:flex-start;border:none;background:#eef0f6;border-radius:999px;padding:9px 15px;font-size:13px;font-weight:700;cursor:pointer">{{ L.sendTest }}</button>
-            <p style="margin:0;font-size:11.5px;color:#a2a5b3">{{ L.prodNote }}</p>
           </div>
 
           <div style="display:flex;gap:14px;margin:16px 4px">
@@ -395,7 +403,7 @@ input::placeholder { color: #a2a5b3; }
         <p style="margin:9px 2px 0;font-size:11.5px;color:#a2a5b3">{{ L.spNote }}</p>
         <div style="display:flex;gap:8px;margin-top:14px">
           <button type="button" onClick="{{ closeDlg }}" style="flex:1;border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.cancel }}</button>
-          <button type="button" onClick="{{ onSpSave }}" style="flex:1;border:none;background:#8b5cf6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.save }}</button>
+          <button type="button" onClick="{{ onSpSave }}" style="flex:1;border:none;background:#8b5cf6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ saveLabel }}</button>
         </div>
       </div>
     </div>
@@ -419,7 +427,7 @@ input::placeholder { color: #a2a5b3; }
           <sc-if value="{{ mCanDelete }}"><button type="button" onClick="{{ onMDelete }}" style="border:none;background:none;color:#e5484d;font-size:13.5px;font-weight:600;cursor:pointer;padding:8px 4px">{{ L.delete }}</button></sc-if>
           <span style="flex:1"></span>
           <button type="button" onClick="{{ closeDlg }}" style="border:none;background:#eef0f6;border-radius:999px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer">{{ L.cancel }}</button>
-          <button type="button" onClick="{{ onMSave }}" style="border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer">{{ L.save }}</button>
+          <button type="button" onClick="{{ onMSave }}" style="border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer">{{ saveLabel }}</button>
         </div>
       </div>
     </div>
@@ -456,7 +464,7 @@ input::placeholder { color: #a2a5b3; }
         </sc-if>
         <div style="display:flex;gap:8px;margin-top:15px">
           <button type="button" onClick="{{ onAfGen }}" style="flex:1;border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.generate }}</button>
-          <button type="button" onClick="{{ onAfApply }}" disabled="{{ afApplyDisabled }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.apply }}</button>
+          <button type="button" onClick="{{ onAfApply }}" disabled="{{ afApplyDisabled }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ applyLabel }}</button>
         </div>
       </div>
     </div>
@@ -469,29 +477,7 @@ input::placeholder { color: #a2a5b3; }
         <label style="display:block;margin-top:12px"><span style="display:block;font-size:12px;font-weight:600;color:#8a8d99;margin-bottom:5px">{{ L.newPin }}</span><input type="text" inputMode="numeric" value="{{ pinNew }}" onChange="{{ onPinNew }}" style="width:100%;border:none;background:#eef0f6;border-radius:12px;padding:10px 12px;font-size:14px"></label>
         <div style="display:flex;gap:8px;margin-top:15px">
           <button type="button" onClick="{{ closeDlg }}" style="flex:1;border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.cancel }}</button>
-          <button type="button" onClick="{{ onPinSave }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.save }}</button>
-        </div>
-      </div>
-    </div>
-  </sc-if>
-
-  <sc-if value="{{ feedOpen }}" hint-placeholder-val="{{ false }}">
-    <div onClick="{{ closeDlg }}" style="position:fixed;inset:0;z-index:70;background:rgba(23,24,28,0.4);backdrop-filter:blur(3px)">
-      <div onClick="{{ stop }}" style="{{ feedPanelStyle }}" data-screen-label="Bot feed">
-        <div style="display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid #eef0f4">
-          <span style="width:32px;height:32px;border-radius:50%;background:#e8edfd;color:#3b6ef6;display:grid;place-items:center">{{ ic.send }}</span>
-          <span style="font-size:16px;font-weight:700;flex:1">{{ L.botPreview }}</span>
-          <button type="button" onClick="{{ closeDlg }}" style="width:32px;height:32px;border-radius:50%;border:none;background:#eef0f6;display:grid;place-items:center;cursor:pointer;color:#6d6f7a">{{ ic.x }}</button>
-        </div>
-        <div style="flex:1;overflow:auto;padding:14px 18px;display:flex;flex-direction:column;gap:9px">
-          <p style="margin:0 0 2px;font-size:11.5px;color:#a2a5b3">{{ L.botNote }}</p>
-          <sc-for list="{{ feedItems }}" as="f" hint-placeholder-count="3">
-            <div style="background:#f7f8fc;border-radius:16px;padding:11px 14px">
-              <div style="font-size:10.5px;color:#a2a5b3;margin-bottom:3px;font-weight:600">{{ f.time }}</div>
-              <div style="font-size:13.5px;white-space:pre-line;line-height:1.5">{{ f.text }}</div>
-              <sc-if value="{{ f.meta }}"><div style="font-size:11.5px;color:#2f56c4;margin-top:5px;font-weight:600">{{ f.meta }}</div></sc-if>
-            </div>
-          </sc-for>
+          <button type="button" onClick="{{ onPinSave }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ saveLabel }}</button>
         </div>
       </div>
     </div>
@@ -502,68 +488,151 @@ input::placeholder { color: #a2a5b3; }
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 430, &quot;height&quot;: 900}, &quot;churchName&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Stream Team&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;App&quot;}, &quot;botLang&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;en&quot;, &quot;ru&quot;], &quot;default&quot;: &quot;en&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;App&quot;}, &quot;simulateDate&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Demo&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 430, &quot;height&quot;: 900}, &quot;churchName&quot;: {&quot;editor&quot;: &quot;text&quot;, &quot;default&quot;: &quot;Stream Team&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;App&quot;}}">
 class Component extends DCLogic {
-  KEY = 'streamteam_v3';
   PAL = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316'];
-  state = this.boot();
 
-  boot() {
-    let db = null;
-    try { db = JSON.parse(localStorage.getItem(this.KEY)); } catch (e) {}
-    if (!db) { try { const old = JSON.parse(localStorage.getItem('streamteam_v2')); if (old && old.v === 2) { old.members.forEach(m => { m.pct = Math.round((m.quota || 0) / 104 * 100); delete m.quota; }); old.v = 3; db = old; } } catch (e) {} }
-    if (!db || db.v !== 3) db = this.seed();
-    try { localStorage.setItem(this.KEY, JSON.stringify(db)); } catch (e) {}
-    return { db, view: 'sched', admin: false, dlg: null, feedOpen: false, toast: '', showPast: false, isDesktop: false, loginPin: '', loginErr: false, tick: 0 };
+  state = {
+    db: { members: [], slots: {}, requests: {}, settings: { group_name: 'Stream Team', rem_hours: 24, dm_duty: true, alert_swap: true } },
+    lang: this.pref('lang', 'en'),
+    me: this.pref('me', ''),
+    ready: false, err: '', busy: '',
+    view: 'sched', admin: false, pin: '',
+    dlg: null, toast: '', showPast: false, isDesktop: false,
+    loginPin: '', loginErr: '', tick: 0
+  };
+
+  pref(k, d) { try { return localStorage.getItem('streamteam_' + k) ?? d; } catch (e) { return d; } }
+  setPref(k, v) { try { localStorage.setItem('streamteam_' + k, v); } catch (e) {} }
+
+  cfg() { return (typeof window !== 'undefined' && window.STREAM_CONFIG) || {}; }
+  configured() {
+    const c = this.cfg();
+    return !!(c.url && c.key && !/YOUR-PROJECT-REF|YOUR_KEY_HERE/.test(c.url + c.key));
   }
 
-  now() {
-    const sd = this.props && this.props.simulateDate;
-    if (sd) { const d = new Date(sd + 'T12:00:00'); if (!isNaN(d)) return d; }
-    return new Date();
+  // ---------- data ----------
+
+  client() {
+    if (this._sb) return this._sb;
+    if (!this.configured() || !window.supabase) return null;
+    const c = this.cfg();
+    this._sb = window.supabase.createClient(c.url, c.key, { db: { schema: 'stream' } });
+    return this._sb;
   }
 
-  seed() {
-    const R = [
-      ['2026-01-04','roman','vanya'],['2026-01-11','vanya','vlad'],['2026-01-18','vlad','tima'],['2026-01-25','roman','nate'],
-      ['2026-02-01','vanya','roman'],['2026-02-08','vlad','vanya'],['2026-02-15','tima','vlad'],['2026-02-22','nate','viktor'],
-      ['2026-03-01','roman','vanya'],['2026-03-08','vanya','vlad'],['2026-03-15','vlad','tima'],['2026-03-22','viktor','roman'],['2026-03-29','vanya','roman'],
-      ['2026-04-05','vlad','vanya'],['2026-04-12','tima','vlad'],['2026-04-19','nate','viktor'],['2026-04-26','roman','vanya'],
-      ['2026-05-03','vanya','vlad'],['2026-05-10','vlad','tima'],['2026-05-17','roman','nate'],['2026-05-24','vanya','roman'],['2026-05-31','vlad','vanya'],
-      ['2026-06-07','tima','vlad'],['2026-06-14','nate','viktor'],['2026-06-21','roman','vanya'],['2026-06-28','vanya','vlad'],
-      ['2026-07-05','vlad','tima'],['2026-07-12','viktor','roman'],['2026-07-19','vanya','roman'],['2026-07-26','vlad','vanya'],
-      ['2026-08-02','tima','vlad'],['2026-08-09','nate','viktor'],['2026-08-16','roman','vanya'],['2026-08-23','vanya','vlad'],['2026-08-30','vlad','tima'],
-      ['2026-09-06','roman','nate'],['2026-09-13','vanya','roman'],['2026-09-20','vlad','vanya'],['2026-09-27','tima','vlad'],
-      ['2026-10-04','nate','viktor'],['2026-10-11','roman','vanya'],['2026-10-18','vanya','vlad'],['2026-10-25','vlad','tima'],
-      ['2026-11-01','viktor','roman'],['2026-11-08','vanya','roman'],['2026-11-15','vlad','vanya'],['2026-11-22','tima','vlad'],['2026-11-29','nate','viktor'],
-      ['2026-12-06','roman','vanya'],['2026-12-13','vanya','vlad'],['2026-12-20','vlad','roman'],['2026-12-27','viktor','nate']
-    ];
-    const slots = {};
-    R.forEach(([d, m, e]) => {
-      slots[d + 'M'] = { id: d + 'M', date: d, part: 'M', time: '10:00', member: m, open: false, confirmed: false, special: '' };
-      slots[d + 'E'] = { id: d + 'E', date: d, part: 'E', time: '18:00', member: e, open: false, confirmed: false, special: '' };
-    });
-    const members = [
-      { id: 'roman', name: 'Roman', ru: 'Роман', tg: '@roman', pct: 19, active: true },
-      { id: 'vanya', name: 'Vanya', ru: 'Ваня', tg: '@vanya', pct: 25, active: true },
-      { id: 'vlad', name: 'Vlad', ru: 'Влад', tg: '@vlad', pct: 25, active: true },
-      { id: 'tima', name: 'Tima', ru: 'Тима', tg: '@tima', pct: 12, active: true },
-      { id: 'viktor', name: 'Viktor', ru: 'Виктор', tg: '@viktor', pct: 10, active: true },
-      { id: 'nate', name: 'Nate', ru: 'Нейт', tg: '@nate', pct: 10, active: true }
-    ];
-    const n = this.now();
-    const yd = new Date(n.getTime() - 86400000); yd.setHours(10, 0, 0, 0);
-    const todayIso = this.iso(n);
-    const sM = slots[todayIso + 'M'], sE = slots[todayIso + 'E'];
-    const feed = [];
-    if (sM && sE) {
-      const nm = id => (members.find(m => m.id === id) || { name: '?' }).name;
-      const tg = id => (members.find(m => m.id === id) || { tg: '' }).tg;
-      feed.push({ ts: yd.getTime(), text: '⏰ Tomorrow — ' + this.botDate(todayIso) + '\nMorning 10 AM — ' + nm(sM.member) + '\nEvening 6 PM — ' + nm(sE.member) + '\nConfirm in the app 👍', meta: '→ group · DM ' + tg(sM.member) + ' · DM ' + tg(sE.member) });
+  async load(quiet) {
+    const sb = this.client();
+    if (!sb) { this.setState({ err: 'config', ready: true }); return; }
+    if (!quiet) this.setState({ busy: 'load' });
+    try {
+      const [m, s, r, cfg] = await Promise.all([
+        sb.from('members').select('*'),
+        sb.from('services').select('*'),
+        sb.from('requests').select('*').eq('status', 'pending'),
+        sb.from('settings_public').select('*').limit(1)
+      ]);
+      const bad = m.error || s.error || r.error;
+      if (bad) throw bad;
+
+      const members = (m.data || []).map(x => ({
+        id: x.id, name: x.name, ru: x.name_ru || '', tg: x.telegram || '',
+        pct: x.share_pct ?? 0, active: x.active !== false
+      })).sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
+
+      const slots = {};
+      (s.data || []).forEach(x => {
+        slots[x.id] = {
+          id: x.id, date: x.date, part: x.part, time: String(x.time).slice(0, 5),
+          member: x.member_id || '', open: !!x.open, confirmed: !!x.confirmed,
+          special: x.special || ''
+        };
+      });
+
+      const requests = {};
+      (r.data || []).forEach(x => {
+        requests[x.id] = {
+          id: x.id, slotId: x.service_id, from: x.from_id || '', to: x.to_id || '',
+          type: x.to_id ? 'direct' : 'open', status: x.status,
+          ts: new Date(x.created_at).getTime()
+        };
+      });
+
+      const settings = (cfg.data && cfg.data[0]) || this.state.db.settings;
+
+      this.setState({ db: { members, slots, requests, settings }, ready: true, err: '', busy: '' });
+    } catch (e) {
+      console.error(e);
+      this.setState({ err: (e && e.message) || 'load', ready: true, busy: '' });
     }
-    return { v: 3, members, slots, requests: {}, feed, settings: { pin: '1234', group: 'Media Team', remHours: 24, dmDuty: true, alertSwap: true }, lang: 'en', me: '' };
   }
 
+  sbq() { const sb = this.client(); if (!sb) throw new Error('not configured'); return sb; }
+
+  // fire-and-forget call to the Edge Function (Telegram + admin writes)
+  async fn(body) {
+    const c = this.cfg();
+    const res = await fetch(c.url + '/functions/v1/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': c.key, 'Authorization': 'Bearer ' + c.key },
+      body: JSON.stringify(body)
+    });
+    let out = {};
+    try { out = await res.json(); } catch (e) {}
+    if (!res.ok) throw new Error(out.error || ('HTTP ' + res.status));
+    return out;
+  }
+
+  async act(label, work) {
+    this.setState({ busy: label, dlg: null });
+    try {
+      await work();
+      await this.load(true);
+      this.flash('✓');
+    } catch (e) {
+      console.error(e);
+      this.flash('⚠ ' + ((e && e.message) || 'failed'));
+      this.setState({ busy: '' });
+    }
+  }
+
+  componentDidMount() {
+    this._mq = window.matchMedia('(min-width: 900px)');
+    this._updMq = () => this.setState({ isDesktop: this._mq.matches });
+    this._updMq();
+    this._mq.addEventListener('change', this._updMq);
+
+    this.load();
+
+    this._poll = setInterval(() => this.load(true), 20000);
+    this._clock = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 30000);
+    this._onVis = () => { if (!document.hidden) this.load(true); };
+    document.addEventListener('visibilitychange', this._onVis);
+
+    const sb = this.client();
+    if (sb) {
+      this._ch = sb.channel('stream-live')
+        .on('postgres_changes', { event: '*', schema: 'stream' }, () => this.load(true))
+        .subscribe();
+    }
+  }
+
+  componentWillUnmount() {
+    if (this._mq) this._mq.removeEventListener('change', this._updMq);
+    document.removeEventListener('visibilitychange', this._onVis);
+    clearInterval(this._poll); clearInterval(this._clock); clearTimeout(this._tt);
+    if (this._ch && this._sb) this._sb.removeChannel(this._ch);
+  }
+
+  flash(msg) {
+    this.setState({ toast: msg, busy: '' });
+    clearTimeout(this._tt);
+    this._tt = setTimeout(() => this.setState({ toast: '' }), 2600);
+  }
+
+  // ---------- helpers ----------
+
+  now() { return new Date(); }
   iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
   dtOf(s) { return new Date(s.date + 'T' + s.time + ':00'); }
   slotList(db) { return Object.values(db.slots).sort((a, b) => this.dtOf(a) - this.dtOf(b)); }
@@ -571,7 +640,7 @@ class Component extends DCLogic {
   nameOf(db, id, lang) { const m = this.mem(db, id); if (!m) return ''; return (lang === 'ru' && m.ru) ? m.ru : m.name; }
   enName(db, id) { const m = this.mem(db, id); return m ? m.name : '?'; }
   t12(hm) {
-    const [h, mi] = hm.split(':').map(Number);
+    const [h, mi] = String(hm).split(':').map(Number);
     const ap = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 || 12;
     return (mi ? h12 + ':' + String(mi).padStart(2, '0') : h12) + ' ' + ap;
@@ -580,6 +649,7 @@ class Component extends DCLogic {
     const i = Math.max(0, db.members.findIndex(m => m.id === id));
     return { width: size + 'px', height: size + 'px', flex: 'none', borderRadius: '50%', background: this.PAL[i % this.PAL.length], color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: Math.round(size * 0.42) + 'px' };
   }
+  reqFor(db, slotId) { return Object.values(db.requests).find(r => r.slotId === slotId && r.status === 'pending') || null; }
 
   dict(lang) {
     const en = {
@@ -592,17 +662,18 @@ class Component extends DCLogic {
       statsTitle: 'Season 2026', done: 'done', ahead: 'ahead', statsNote: 'Plan = target share of all services this year. Bar shows assigned vs plan.',
       members: 'Members', addMember: 'Add', edit: 'Edit',
       autofill: 'Auto-fill', autofillSub: 'Spread services by each member\u2019s share', afSub: 'Assigns Sunday morning + evening services across the range.', afTargets: 'Services to assign',
-      addSpecial: 'Special service', addSpecialSub: 'e.g. Christmas on a Thursday', spPh: 'Christmas Eve', askAll: 'Ask the group — first to accept', spNote: 'If no one is assigned, the bot asks the group and the first member to accept in the app takes it.',
+      addSpecial: 'Special service', addSpecialSub: 'e.g. Christmas on a Thursday', spPh: 'Christmas Eve', askAll: 'Ask the group — first to accept', spNote: 'If no one is assigned, the bot asks the group and the first member to accept takes it.',
       telegram: 'Telegram bot', tgConnected: 'Connected', remBefore: 'Reminder, hours before', dmDuty: 'Also DM the on-duty operator', alertSwap: 'Post replacement requests',
-      sendTest: 'Send test message', queued: 'Queued reminders', prodNote: 'Live setup: a free scheduled job (Supabase cron) reads this schedule and posts to your Telegram group via the bot.',
-      signin: 'Sign in', pin: 'Admin PIN', pinHint: 'Default PIN: 1234 — change it after signing in.', wrongPin: 'Wrong PIN', changePin: 'Change PIN', newPin: 'New PIN', logout: 'Log out',
+      sendTest: 'Send test message', queued: 'Next reminders',
+      signin: 'Sign in', pin: 'Admin PIN', pinHint: 'The PIN is checked on the server, not in this page.', wrongPin: 'Wrong PIN', changePin: 'Change PIN', newPin: 'New PIN', logout: 'Log out',
       whoTitle: 'Who are you?', whoSub: 'Saved on this device only.', viewer: 'Just viewing', pickName: 'Pick my name', mineEmpty: 'Pick your name once and this tab will show your turns, reminders and requests.',
-      save: 'Save', cancel: 'Cancel', delete: 'Delete', apply: 'Apply', generate: 'Preview', from: 'From', to: 'To',
+      save: 'Save', saving: 'Saving…', cancel: 'Cancel', delete: 'Delete', apply: 'Apply', generate: 'Preview', from: 'From', to: 'To', retry: 'Retry',
       date: 'Date', time: 'Time', label: 'Name of service', name: 'Name', nameRu: 'Name (Russian)', tgUser: 'Telegram @', shareLabel: 'Share of services, %', activeM: 'Active',
-      overwrite: 'Overwrite already assigned', nothingFill: 'Nothing to fill in this range — extend it or allow overwrite.', assign: 'Operator', leaveOpen: 'Leave open — ask for cover', deleteService: 'Delete this service',
-      botPreview: 'Group chat preview', botNote: 'A mirror of what the bot posts to your Telegram group.',
+      overwrite: 'Overwrite already assigned', nothingFill: 'Nothing to fill in this range — extend it or allow overwrite.', assign: 'Operator', leaveOpen: 'Leave open — ask the group', deleteService: 'Delete this service',
       ask: 'Ask', askHint: 'Sends them a direct request instead of opening it to everyone.',
-      firstTaken: 'First to accept takes it', waitingReply: 'Waiting for a reply', pickFirst: 'Pick your name first (top right)', accept: 'Accept', decline: 'Decline', needOp: 'Operator needed'
+      firstTaken: 'First to accept takes it', waitingReply: 'Waiting for a reply', pickFirst: 'Pick your name first (top right)', accept: 'Accept', decline: 'Decline', needOp: 'Operator needed',
+      loading: 'Loading the schedule…', offline: 'Cannot reach the database. Check your connection.',
+      noConfig: 'Not connected yet — add your Supabase URL and publishable key to config.js.'
     };
     const ru = {
       tabSched: 'Расписание', tabMine: 'Мои смены', tabStats: 'Статистика', tabAdmin: 'Админ',
@@ -611,20 +682,21 @@ class Component extends DCLogic {
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
       addCalendar: 'Подписаться в календаре', upcoming: 'Предстоящие', noUpcoming: 'Предстоящих смен нет.', thisYear: 'сделано в этом году',
-      statsTitle: 'Сезон 2026', done: 'сделано', ahead: 'впереди', statsNote: 'План = целевая доля всех служб за год. Полоса — назначено против плана.',
+      statsTitle: 'Сезон 2026', done: 'сделано', ahead: 'впереди', statsNote: 'План — целевая доля всех служб за год. Полоса: назначено против плана.',
       members: 'Участники', addMember: 'Добавить', edit: 'Изменить',
       autofill: 'Автозаполнение', autofillSub: 'Распределить службы по доле каждого', afSub: 'Назначает утренние и вечерние службы в диапазоне.', afTargets: 'Сколько служб назначить',
-      addSpecial: 'Особая служба', addSpecialSub: 'например, Рождество в четверг', spPh: 'Сочельник', askAll: 'Спросить группу — кто первый', spNote: 'Если никто не назначен, бот спросит группу — служба достанется первому, кто примет её в приложении.',
+      addSpecial: 'Особая служба', addSpecialSub: 'например, Рождество в четверг', spPh: 'Сочельник', askAll: 'Спросить группу — кто первый', spNote: 'Если никто не назначен, бот спросит группу — служба достанется первому, кто примет её.',
       telegram: 'Телеграм-бот', tgConnected: 'Подключен', remBefore: 'Напоминание, часов до', dmDuty: 'Дублировать дежурному в личку', alertSwap: 'Публиковать запросы замен',
-      sendTest: 'Тестовое сообщение', queued: 'Запланированные напоминания', prodNote: 'В продакшене: бесплатная задача по расписанию (Supabase cron) читает график и постит в вашу группу Телеграм через бота.',
-      signin: 'Войти', pin: 'PIN администратора', pinHint: 'PIN по умолчанию: 1234 — смените после входа.', wrongPin: 'Неверный PIN', changePin: 'Сменить PIN', newPin: 'Новый PIN', logout: 'Выйти',
+      sendTest: 'Тестовое сообщение', queued: 'Ближайшие напоминания',
+      signin: 'Войти', pin: 'PIN администратора', pinHint: 'PIN проверяется на сервере, а не в этой странице.', wrongPin: 'Неверный PIN', changePin: 'Сменить PIN', newPin: 'Новый PIN', logout: 'Выйти',
       whoTitle: 'Кто вы?', whoSub: 'Сохраняется только на этом устройстве.', viewer: 'Просто смотрю', pickName: 'Выбрать имя', mineEmpty: 'Выберите имя один раз — здесь появятся ваши смены, напоминания и запросы.',
-      save: 'Сохранить', cancel: 'Отмена', delete: 'Удалить', apply: 'Применить', generate: 'Предпросмотр', from: 'С', to: 'По',
+      save: 'Сохранить', saving: 'Сохранение…', cancel: 'Отмена', delete: 'Удалить', apply: 'Применить', generate: 'Предпросмотр', from: 'С', to: 'По', retry: 'Повторить',
       date: 'Дата', time: 'Время', label: 'Название службы', name: 'Имя', nameRu: 'Имя (по-русски)', tgUser: 'Телеграм @', shareLabel: 'Доля служб, %', activeM: 'Активен',
       overwrite: 'Перезаписать уже назначенные', nothingFill: 'В этом диапазоне нечего заполнять — расширьте его или включите перезапись.', assign: 'Оператор', leaveOpen: 'Оставить свободной — спросить группу', deleteService: 'Удалить эту службу',
-      botPreview: 'Что видит группа', botNote: 'Так сообщения бота выглядят в вашей группе Телеграм.',
       ask: 'Спросить', askHint: 'Личный запрос конкретному человеку, не на всю группу.',
-      firstTaken: 'Кто первый согласится', waitingReply: 'Ожидает ответа', pickFirst: 'Сначала выберите имя (справа вверху)', accept: 'Принять', decline: 'Отклонить', needOp: 'Нужен оператор'
+      firstTaken: 'Кто первый согласится', waitingReply: 'Ожидает ответа', pickFirst: 'Сначала выберите имя (справа вверху)', accept: 'Принять', decline: 'Отклонить', needOp: 'Нужен оператор',
+      loading: 'Загрузка расписания…', offline: 'Нет связи с базой данных. Проверьте подключение.',
+      noConfig: 'Ещё не подключено — укажите URL и publishable-ключ Supabase в config.js.'
     };
     return lang === 'ru' ? ru : en;
   }
@@ -636,7 +708,6 @@ class Component extends DCLogic {
       mon: ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК'],
       monG: ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'],
       monL: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
-      full: d => this.fmt('ru').dowL[d.getDay()] + ', ' + d.getDate() + ' ' + this.fmt('ru').monG[d.getMonth()],
       dU: 'дн', hU: 'ч', mU: 'мин', inW: 'через'
     };
     return {
@@ -644,127 +715,112 @@ class Component extends DCLogic {
       dowL: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       mon: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
       monL: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
-      full: d => this.fmt('en').dowL[d.getDay()] + ', ' + this.fmt('en').monL[d.getMonth()] + ' ' + d.getDate(),
       dU: 'd', hU: 'h', mU: 'min', inW: 'in'
     };
   }
-
-  botDate(dateIso) {
-    const d = new Date(dateIso + 'T12:00');
-    const bl = (this.props && this.props.botLang) || 'en';
-    const f = this.fmt(bl === 'ru' ? 'ru' : 'en');
-    return bl === 'ru' ? f.dowL[d.getDay()] + ', ' + d.getDate() + ' ' + f.monG[d.getMonth()] : f.dowL[d.getDay()].slice(0, 3) + ', ' + f.monL[d.getMonth()].slice(0, 3) + ' ' + d.getDate();
+  full(F, lang, d) {
+    return lang === 'ru'
+      ? F.dowL[d.getDay()] + ', ' + d.getDate() + ' ' + F.monG[d.getMonth()]
+      : F.dowL[d.getDay()] + ', ' + F.monL[d.getMonth()] + ' ' + d.getDate();
   }
-  botSlot(db, s) {
-    const bl = (this.props && this.props.botLang) || 'en';
-    const part = s.special ? s.special : (s.part === 'M' ? (bl === 'ru' ? 'утро' : 'Morning') : (bl === 'ru' ? 'вечер' : 'Evening'));
-    return this.botDate(s.date) + ' · ' + part + ' ' + this.t12(s.time);
-  }
-
-  commit(fn) {
-    const db = JSON.parse(JSON.stringify(this.state.db));
-    fn(db);
-    try { localStorage.setItem(this.KEY, JSON.stringify(db)); } catch (e) {}
-    this.setState({ db });
-  }
-  pushFeed(db, text, meta) { db.feed.push({ ts: this.now().getTime(), text, meta: meta || '' }); }
-  flash(msg) {
-    this.setState({ toast: msg });
-    clearTimeout(this._tt);
-    this._tt = setTimeout(() => this.setState({ toast: '' }), 2400);
-  }
-
-  componentDidMount() {
-    this._mq = window.matchMedia('(min-width: 900px)');
-    this._updMq = () => this.setState({ isDesktop: this._mq.matches });
-    this._updMq();
-    this._mq.addEventListener('change', this._updMq);
-    this._iv = setInterval(() => this.setState(s => ({ tick: s.tick + 1 })), 30000);
-  }
-  componentWillUnmount() { if (this._mq) this._mq.removeEventListener('change', this._updMq); clearInterval(this._iv); clearTimeout(this._tt); }
-
-  cd(dt, f) {
+  cd(dt, F) {
     const ms = dt - this.now();
     if (ms <= 0) return '';
     const d = Math.floor(ms / 86400000);
-    if (d >= 1) return f.inW + ' ' + d + ' ' + f.dU;
+    if (d >= 1) return F.inW + ' ' + d + ' ' + F.dU;
     const h = Math.floor(ms / 3600000);
-    if (h >= 1) return f.inW + ' ' + h + ' ' + f.hU;
-    return f.inW + ' ' + Math.max(1, Math.floor(ms / 60000)) + ' ' + f.mU;
+    if (h >= 1) return F.inW + ' ' + h + ' ' + F.hU;
+    return F.inW + ' ' + Math.max(1, Math.floor(ms / 60000)) + ' ' + F.mU;
   }
 
-  reqFor(db, slotId) { return Object.values(db.requests).find(r => r.slotId === slotId && r.status === 'pending') || null; }
+  // ---------- member actions ----------
 
-  doConfirm(slotId) {
-    this.commit(db => {
-      const s = db.slots[slotId]; if (!s) return;
-      s.confirmed = true;
-      this.pushFeed(db, '👍 ' + this.enName(db, s.member) + ' confirmed — ' + this.botSlot(db, s), '→ group');
+  doConfirm(id) {
+    this.act('confirm', async () => {
+      const { error } = await this.sbq().from('services').update({ confirmed: true }).eq('id', id);
+      if (error) throw error;
+      await this.fn({ event: 'confirmed', service_id: id, by: this.state.me });
     });
-    this.setState({ dlg: null });
-    this.flash('✓');
   }
-  doOpenReq(slotId) {
-    this.commit(db => {
-      const s = db.slots[slotId]; if (!s) return;
-      s.open = true;
-      const id = 'r' + Date.now();
-      db.requests[id] = { id, slotId, from: s.member, type: 'open', status: 'pending', ts: this.now().getTime() };
-      if (db.settings.alertSwap) this.pushFeed(db, '🔴 ' + this.enName(db, s.member) + ' needs a replacement\n' + this.botSlot(db, s) + '\nOpen the app — first to accept takes it.', '→ group');
+  doOpenReq(id) {
+    const from = this.state.db.slots[id] ? this.state.db.slots[id].member : '';
+    this.act('open', async () => {
+      const sb = this.sbq();
+      let r = await sb.from('services').update({ open: true }).eq('id', id);
+      if (r.error) throw r.error;
+      r = await sb.from('requests').insert({ service_id: id, from_id: from, to_id: null, status: 'pending' });
+      if (r.error) throw r.error;
+      await this.fn({ event: 'cover_requested', service_id: id, from });
     });
-    this.setState({ dlg: null });
   }
-  doCancelReq(slotId) {
-    this.commit(db => {
-      const s = db.slots[slotId]; const r = this.reqFor(db, slotId);
-      if (r) r.status = 'cancelled';
-      if (s) { s.open = false; this.pushFeed(db, '↩️ ' + this.enName(db, s.member) + ' no longer needs cover — ' + this.botSlot(db, s), '→ group'); }
+  doCancelReq(id) {
+    const req = this.reqFor(this.state.db, id);
+    const from = this.state.db.slots[id] ? this.state.db.slots[id].member : '';
+    this.act('cancel', async () => {
+      const sb = this.sbq();
+      let r = await sb.from('services').update({ open: false }).eq('id', id);
+      if (r.error) throw r.error;
+      if (req) {
+        r = await sb.from('requests').update({ status: 'cancelled' }).eq('id', req.id);
+        if (r.error) throw r.error;
+      }
+      await this.fn({ event: 'cancelled', service_id: id, from });
     });
-    this.setState({ dlg: null });
   }
-  doCover(slotId) {
-    const me = this.state.db.me;
-    this.commit(db => {
-      const s = db.slots[slotId]; if (!s) return;
-      const r = this.reqFor(db, slotId);
-      const was = s.member;
-      if (r) { r.status = 'done'; r.coveredBy = me; }
-      s.member = me; s.open = false; s.confirmed = false;
-      this.pushFeed(db, '✅ ' + this.enName(db, me) + ' takes ' + this.botSlot(db, s) + (was ? ' — covering for ' + this.enName(db, was) : ''), '→ group');
+  doCover(id) {
+    const me = this.state.me;
+    const slot = this.state.db.slots[id];
+    const was = slot ? slot.member : '';
+    const req = this.reqFor(this.state.db, id);
+    this.act('cover', async () => {
+      const sb = this.sbq();
+      // guard: only take it if it is still open / unclaimed
+      const cur = await sb.from('services').select('member_id, open').eq('id', id).single();
+      if (cur.error) throw cur.error;
+      if (cur.data.member_id && cur.data.member_id !== was && !cur.data.open) {
+        throw new Error('already taken');
+      }
+      let r = await sb.from('services')
+        .update({ member_id: me, open: false, confirmed: false, notified: false }).eq('id', id);
+      if (r.error) throw r.error;
+      if (req) {
+        r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
+        if (r.error) throw r.error;
+      }
+      await this.fn({ event: 'covered', service_id: id, by: me, from: was });
     });
-    this.setState({ dlg: null });
-    this.flash('✓');
   }
-  doAsk(slotId, to) {
+  doAsk(id, to) {
     if (!to) return;
-    this.commit(db => {
-      const s = db.slots[slotId]; if (!s) return;
-      const id = 'r' + Date.now();
-      db.requests[id] = { id, slotId, from: s.member, to, type: 'direct', status: 'pending', ts: this.now().getTime() };
-      const m = this.mem(db, to);
-      this.pushFeed(db, '🔄 ' + this.enName(db, s.member) + ' asks ' + this.enName(db, to) + ' to take ' + this.botSlot(db, s) + '\nAccept or decline in the app.', '→ DM ' + (m ? m.tg : ''));
-    });
-    this.setState({ dlg: null });
-  }
-  doAccept(reqId) {
-    this.commit(db => {
-      const r = db.requests[reqId]; if (!r) return;
-      const s = db.slots[r.slotId]; if (!s) return;
-      r.status = 'done';
-      const was = s.member;
-      s.member = r.to; s.open = false; s.confirmed = false;
-      this.pushFeed(db, '✅ ' + this.enName(db, r.to) + ' takes ' + this.botSlot(db, s) + ' — covering for ' + this.enName(db, was), '→ group');
-    });
-    this.flash('✓');
-  }
-  doDecline(reqId) {
-    this.commit(db => {
-      const r = db.requests[reqId]; if (!r) return;
-      r.status = 'declined';
-      const s = db.slots[r.slotId];
-      this.pushFeed(db, '🚫 ' + this.enName(db, r.to) + ' can\u2019t take ' + (s ? this.botSlot(db, s) : ''), '→ DM ' + ((this.mem(db, r.from) || {}).tg || ''));
+    const from = this.state.db.slots[id] ? this.state.db.slots[id].member : '';
+    this.act('ask', async () => {
+      const r = await this.sbq().from('requests')
+        .insert({ service_id: id, from_id: from, to_id: to, status: 'pending' });
+      if (r.error) throw r.error;
+      await this.fn({ event: 'asked', service_id: id, from, to });
     });
   }
+  doAccept(req) {
+    this.act('accept', async () => {
+      const sb = this.sbq();
+      let r = await sb.from('services')
+        .update({ member_id: req.to, open: false, confirmed: false, notified: false })
+        .eq('id', req.slotId);
+      if (r.error) throw r.error;
+      r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
+      if (r.error) throw r.error;
+      await this.fn({ event: 'covered', service_id: req.slotId, by: req.to, from: req.from });
+    });
+  }
+  doDecline(req) {
+    this.act('decline', async () => {
+      const r = await this.sbq().from('requests').update({ status: 'declined' }).eq('id', req.id);
+      if (r.error) throw r.error;
+      await this.fn({ event: 'declined', service_id: req.slotId, by: req.to, to: req.from });
+    });
+  }
+
+  // ---------- autofill ----------
 
   autofillCompute(db, from, to, targets, ow) {
     const start = new Date(from + 'T00:00'), end = new Date(to + 'T23:59');
@@ -779,13 +835,11 @@ class Component extends DCLogic {
       ['M', 'E'].forEach(part => {
         const id = date + part, ex = db.slots[id];
         const t = part === 'M' ? '10:00' : '18:00';
-        const dt = new Date(date + 'T' + t);
-        if (dt <= nowT) { if (ex && ex.member) lastIdx[ex.member] = wi; return; }
+        if (new Date(date + 'T' + t) <= nowT) { if (ex && ex.member) lastIdx[ex.member] = wi; return; }
         if (ex && ex.member && !ow) { lastIdx[ex.member] = wi; return; }
-        const otherId = date + (part === 'M' ? 'E' : 'M');
         const takenToday = plan.filter(p => p.date === date).map(p => p.member);
-        const other = db.slots[otherId];
-        if (other && other.member && !(ow && new Date(date + 'T' + other.time) > nowT)) takenToday.push(other.member);
+        const other = db.slots[date + (part === 'M' ? 'E' : 'M')];
+        if (other && other.member && !ow) takenToday.push(other.member);
         let cands = db.members.filter(m => m.active && rem[m.id] > 0 && !takenToday.includes(m.id));
         if (!cands.length) cands = db.members.filter(m => m.active && rem[m.id] > 0);
         if (!cands.length) { plan.push({ date, part, time: t, member: '', was: ex ? ex.member : '' }); return; }
@@ -810,7 +864,7 @@ class Component extends DCLogic {
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//StreamTeam//EN', 'X-WR-CALNAME:Livestream duty'];
     ev.forEach(s => {
       const st = this.dtOf(s), en = new Date(st.getTime() + 2 * 3600000);
-      const what = s.special ? s.special : (s.part === 'M' ? 'Morning service' : 'Evening service');
+      const what = s.special || (s.part === 'M' ? 'Morning service' : 'Evening service');
       lines.push('BEGIN:VEVENT', 'UID:' + s.id + '@streamteam', 'DTSTART:' + stamp(st), 'DTEND:' + stamp(en), 'SUMMARY:Livestream duty — ' + what, 'END:VEVENT');
     });
     lines.push('END:VCALENDAR');
@@ -828,7 +882,6 @@ class Component extends DCLogic {
       send: [e('path', { key: 1, d: 'M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z' }), e('path', { key: 2, d: 'm21.854 2.147-10.94 10.939' })],
       check: [e('path', { key: 1, d: 'M20 6 9 17l-5-5' })],
       plus: [e('path', { key: 1, d: 'M5 12h14' }), e('path', { key: 2, d: 'M12 5v14' })],
-      x: [e('path', { key: 1, d: 'M18 6 6 18' }), e('path', { key: 2, d: 'm6 6 12 12' })],
       download: [e('path', { key: 1, d: 'M12 15V3' }), e('path', { key: 2, d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }), e('path', { key: 3, d: 'm7 10 5 5 5-5' })],
       swap: [e('path', { key: 1, d: 'm17 2 4 4-4 4' }), e('path', { key: 2, d: 'M3 11v-1a4 4 0 0 1 4-4h14' }), e('path', { key: 3, d: 'm7 22-4-4 4-4' }), e('path', { key: 4, d: 'M21 13v1a4 4 0 0 1-4 4H3' })],
       chev: [e('path', { key: 1, d: 'm9 18 6-6-6-6' })],
@@ -847,16 +900,23 @@ class Component extends DCLogic {
   knob(on) { return { display: 'block', width: '24px', height: '24px', borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(23,24,28,0.25)', transform: on ? 'translateX(18px)' : 'none', transition: 'transform .18s' }; }
 
   renderVals() {
-    const st = this.state, db = st.db, lang = db.lang, L = this.dict(lang), F = this.fmt(lang);
+    const st = this.state, db = st.db, lang = st.lang, L = this.dict(lang), F = this.fmt(lang);
     const now = this.now(), todayIso = this.iso(now);
-    const me = db.me, meM = this.mem(db, me);
+    const me = st.me, meM = this.mem(db, me);
     const dlg = st.dlg || {};
     const D = k => dlg.type === k;
     const set = patch => this.setState({ dlg: Object.assign({}, this.state.dlg, patch) });
-    const fld = k => e => set({ [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
+    const fld = k => e => set({ [k]: e.target.value });
     const list = this.slotList(db);
     const future = list.filter(s => this.dtOf(s) > now);
-    const partLabel = s => s.special ? s.special : (s.part === 'M' ? L.morning : L.evening);
+    const partLabel = s => s.special || (s.part === 'M' ? L.morning : L.evening);
+
+    // banner
+    let banner = '', bannerStyle = null, bannerRetry = false;
+    const bs = (bg, fg) => ({ display: 'flex', alignItems: 'center', gap: '10px', background: bg, color: fg, borderRadius: '14px', padding: '11px 14px', marginTop: '14px', fontSize: '13px', fontWeight: 600 });
+    if (st.err === 'config') { banner = L.noConfig; bannerStyle = bs('#fef3e2', '#92600a'); }
+    else if (st.err) { banner = L.offline; bannerStyle = bs('#fdebec', '#b4262b'); bannerRetry = true; }
+    else if (!st.ready) { banner = L.loading; bannerStyle = bs('#e8edfd', '#2f56c4'); }
 
     const slotTap = s => () => {
       const dtv = this.dtOf(s);
@@ -870,42 +930,39 @@ class Component extends DCLogic {
       }
     };
 
-    // hero — next service, both operators highlighted
+    // hero
     const nextSlot = future[0] || null;
     const liveSlots = list.filter(s => { const d = this.dtOf(s); return d <= now && now - d < 2 * 3600000; });
-    const hero = { kicker: L.nextService, title: '—', liveLine: '', people: [], cd: '' };
+    const hero = { kicker: L.nextService, title: st.ready ? '—' : ' ', liveLine: '', people: [], cd: '' };
     if (liveSlots.length) {
       const lv = liveSlots[liveSlots.length - 1];
       hero.liveLine = L.liveNow + ' — ' + partLabel(lv) + ' · ' + this.nameOf(db, lv.member, lang);
     }
     if (nextSlot) {
-      const d = new Date(nextSlot.date + 'T12:00');
-      hero.title = F.full(d);
+      hero.title = this.full(F, lang, new Date(nextSlot.date + 'T12:00'));
       if (nextSlot.date === todayIso) hero.kicker = L.nextService + ' — ' + L.today;
-      const dayServices = future.filter(s => s.date === nextSlot.date);
-      hero.people = dayServices.map(s => ({
+      hero.people = future.filter(s => s.date === nextSlot.date).map(s => ({
         key: s.id,
         initial: s.member ? this.enName(db, s.member)[0] : '?',
         name: s.member ? this.nameOf(db, s.member, lang) : L.needOp,
-        partLabel: partLabel(s),
-        time: this.t12(s.time),
-        onTap: slotTap(s)
+        partLabel: partLabel(s), time: this.t12(s.time), onTap: slotTap(s)
       }));
       hero.cd = this.cd(this.dtOf(nextSlot), F);
     }
 
-    // open requests strip
+    // requests strip
     const pend = Object.values(db.requests).filter(r => r.status === 'pending').sort((a, b) => a.ts - b.ts);
     const openReqs = [];
     pend.forEach(r => {
       const s = db.slots[r.slotId]; if (!s || this.dtOf(s) <= now) return;
-      const slotTxt = F.full(new Date(s.date + 'T12:00')) + ' · ' + this.t12(s.time);
+      const slotTxt = this.full(F, lang, new Date(s.date + 'T12:00')) + ' · ' + this.t12(s.time);
       if (r.type === 'open') {
         openReqs.push({
           key: r.id,
           text: r.from ? (this.nameOf(db, r.from, lang) + ' — ' + L.needCover.toLowerCase()) : ((s.special || L.addSpecial) + ' — ' + L.needOp.toLowerCase()),
           sub: slotTxt + ' · ' + L.firstTaken,
-          actShow: !!me && me !== r.from, actLabel: L.cover, onAct: () => this.setState({ dlg: { type: 'cover', slotId: s.id } }),
+          actShow: !!me && me !== r.from, actLabel: L.cover,
+          onAct: () => this.setState({ dlg: { type: 'cover', slotId: s.id } }),
           declineShow: false
         });
       } else {
@@ -915,13 +972,13 @@ class Component extends DCLogic {
           key: r.id,
           text: this.nameOf(db, r.from, lang) + ' → ' + this.nameOf(db, r.to, lang),
           sub: slotTxt + ' · ' + L.waitingReply,
-          actShow: target, actLabel: L.accept, onAct: () => this.doAccept(r.id),
-          declineShow: target, declineLabel: L.decline, onDecline: () => this.doDecline(r.id)
+          actShow: target, actLabel: L.accept, onAct: () => this.doAccept(r),
+          declineShow: target, declineLabel: L.decline, onDecline: () => this.doDecline(r)
         });
       }
     });
 
-    // schedule months
+    // months
     const shown = st.showPast ? list : list.filter(s => this.dtOf(s) > now - 2 * 3600000 || s.date === todayIso);
     const byDate = {};
     shown.forEach(s => { (byDate[s.date] = byDate[s.date] || []).push(s); });
@@ -944,7 +1001,7 @@ class Component extends DCLogic {
         const mine = !!me && s.member === me;
         const unassigned = !s.member;
         const style = {
-          background: s.open || unassigned ? '#fff' : (mine && !past ? '#eef3ff' : '#fff'),
+          background: mine && !past ? '#eef3ff' : '#fff',
           border: s.open || unassigned ? '1.5px dashed #f0a6aa' : 'none',
           boxShadow: s.open || unassigned ? 'none' : (mine && !past ? 'inset 0 0 0 1.5px #b7cbfb, 0 1px 2px rgba(23,24,28,0.05)' : '0 1px 2px rgba(23,24,28,0.05)'),
           borderRadius: '14px', padding: '9px 12px', minHeight: '58px',
@@ -973,8 +1030,9 @@ class Component extends DCLogic {
     const heroMine = { show: !!myNext };
     if (myNext) {
       const chip = this.partChip(myNext, L);
-      heroMine.title = F.full(new Date(myNext.date + 'T12:00'));
-      heroMine.chipText = chip.text; heroMine.chipStyle = Object.assign({}, chip.style, { fontSize: '12.5px', padding: '4px 11px' });
+      heroMine.title = this.full(F, lang, new Date(myNext.date + 'T12:00'));
+      heroMine.chipText = chip.text;
+      heroMine.chipStyle = Object.assign({}, chip.style, { fontSize: '12.5px', padding: '4px 11px' });
       heroMine.time = this.t12(myNext.time);
       heroMine.cd = this.cd(this.dtOf(myNext), F);
       heroMine.confirmed = myNext.confirmed;
@@ -988,7 +1046,7 @@ class Component extends DCLogic {
       return {
         key: s.id, dayNum: d.getDate(), mon: F.mon[d.getMonth()],
         title: partLabel(s) + ' · ' + this.t12(s.time),
-        sub: F.full(d),
+        sub: this.full(F, lang, d),
         tagText: s.open ? L.needCover : (r && r.type === 'direct' ? L.waiting : ''),
         tagStyle: s.open ? this.pill('#fdebec', '#e5484d') : this.pill('#eef0f6', '#6d6f7a'),
         check: s.confirmed,
@@ -997,25 +1055,21 @@ class Component extends DCLogic {
       };
     });
     const myDone = list.filter(s => s.member === me && this.dtOf(s) <= now).length;
-    const doneLine = meM ? myDone + ' ' + L.thisYear : '';
 
     // stats
     const totalYear = list.length || 1;
-    const statRows = db.members.map((m, i) => {
+    const statRows = db.members.map(m => {
       const done = list.filter(s => s.member === m.id && this.dtOf(s) <= now).length;
       const ahead = list.filter(s => s.member === m.id && this.dtOf(s) > now).length;
-      const actualPct = Math.round((done + ahead) / totalYear * 100);
-      const w = m.pct ? Math.min(100, Math.round(actualPct / m.pct * 100)) : 0;
+      const actual = Math.round((done + ahead) / totalYear * 100);
+      const w = m.pct ? Math.min(100, Math.round(actual / m.pct * 100)) : 0;
       return {
         key: m.id, initial: m.name[0], name: this.nameOf(db, m.id, lang),
         counts: done + ' ' + L.done + ' · ' + ahead + ' ' + L.ahead,
-        plan: m.pct + '%',
-        avStyle: this.av(db, m.id, 32),
-        rowStyle: { display: 'flex', alignItems: 'center', gap: '11px', padding: '12px 14px', borderTop: i ? '1px solid #eef0f4' : 'none' },
-        barStyle: { display: 'block', height: '4px', borderRadius: '999px', width: w + '%', background: 'linear-gradient(90deg,#4f7df9,#7a5cf0)' },
-        _plan: m.pct
+        plan: m.pct + '%', avStyle: this.av(db, m.id, 32),
+        barStyle: { display: 'block', height: '4px', borderRadius: '999px', width: w + '%', background: 'linear-gradient(90deg,#4f7df9,#7a5cf0)' }
       };
-    }).sort((a, b) => b._plan - a._plan).map((r, i) => { r.rowStyle = Object.assign({}, r.rowStyle, { borderTop: i ? '1px solid #eef0f4' : 'none' }); return r; });
+    }).map((r, i) => { r.rowStyle = { display: 'flex', alignItems: 'center', gap: '11px', padding: '12px 14px', borderTop: i ? '1px solid #eef0f4' : 'none' }; return r; });
 
     // admin
     const admMembers = db.members.map((m, i) => ({
@@ -1026,7 +1080,7 @@ class Component extends DCLogic {
       style: { display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 14px', borderTop: i ? '1px solid #eef0f4' : 'none' }
     }));
     const queueRows = future.slice(0, 3).map(s => {
-      const send = new Date(this.dtOf(s).getTime() - (db.settings.remHours || 24) * 3600000);
+      const send = new Date(this.dtOf(s).getTime() - (db.settings.rem_hours || 24) * 3600000);
       return {
         key: 'q' + s.id,
         when: F.dow[send.getDay()] + ' ' + send.getDate() + ' ' + F.mon[send.getMonth()] + ' · ' + this.t12(String(send.getHours()).padStart(2, '0') + ':' + String(send.getMinutes()).padStart(2, '0')),
@@ -1036,26 +1090,23 @@ class Component extends DCLogic {
 
     // dialogs
     const dlgSlot = dlg.slotId ? db.slots[dlg.slotId] : null;
-    const slotTitle = s => s ? F.full(new Date(s.date + 'T12:00')) : '';
-    const slotSub = s => s ? (partLabel(s) + ' · ' + this.t12(s.time)) : '';
+    const sTitle = s => s ? this.full(F, lang, new Date(s.date + 'T12:00')) : '';
+    const sSub = s => s ? (partLabel(s) + ' · ' + this.t12(s.time)) : '';
     const optRow = i => ({ display: 'flex', alignItems: 'center', gap: '11px', border: 'none', background: 'none', padding: '10px 4px', cursor: 'pointer', borderTop: i ? '1px solid #eef0f4' : 'none', width: '100%' });
 
     const whoOpts = db.members.filter(m => m.active).map((m, i) => ({
-      key: m.id, label: this.nameOf(db, m.id, lang), initial: m.name[0], avStyle: this.av(db, m.id, 32), checked: me === m.id, style: optRow(i),
-      onPick: () => { this.commit(d2 => { d2.me = m.id; }); this.setState({ dlg: null }); }
+      key: m.id, label: this.nameOf(db, m.id, lang), initial: m.name[0],
+      avStyle: this.av(db, m.id, 32), checked: me === m.id, style: optRow(i),
+      onPick: () => { this.setPref('me', m.id); this.setState({ me: m.id, dlg: null }); }
     }));
 
     const assignOpts = dlgSlot ? db.members.filter(m => m.active).map((m, i) => ({
-      key: m.id, label: this.nameOf(db, m.id, lang), initial: m.name[0], avStyle: this.av(db, m.id, 32), checked: dlgSlot.member === m.id, style: optRow(i),
-      onPick: () => {
-        this.commit(d2 => {
-          const s = d2.slots[dlg.slotId]; if (!s) return;
-          const r = Object.values(d2.requests).find(x => x.slotId === s.id && x.status === 'pending');
-          if (r) r.status = 'cancelled';
-          s.member = m.id; s.open = false; s.confirmed = false;
-        });
-        this.setState({ dlg: null }); this.flash('✓');
-      }
+      key: m.id, label: this.nameOf(db, m.id, lang), initial: m.name[0],
+      avStyle: this.av(db, m.id, 32), checked: dlgSlot.member === m.id, style: optRow(i),
+      onPick: () => this.act('assign', () => this.fn({
+        action: 'admin_set_service', pin: st.pin,
+        service: { id: dlgSlot.id, date: dlgSlot.date, part: dlgSlot.part, time: dlgSlot.time, member_id: m.id, special: dlgSlot.special }
+      }))
     })) : [];
 
     const myReq = dlgSlot ? this.reqFor(db, dlgSlot.id) : null;
@@ -1077,33 +1128,29 @@ class Component extends DCLogic {
     }
 
     const tabDefs = [['sched', L.tabSched, 'cal'], ['mine', L.tabMine, 'user'], ['stats', L.tabStats, 'chart'], ['admin', L.tabAdmin, 'gear']];
-    const tabs = tabDefs.map(([k, label, icn]) => ({
-      key: k, label, icon: this.icon(icn, 20),
+    const tabs = tabDefs.map(([k, labelTxt, icn]) => ({
+      key: k, label: labelTxt, icon: this.icon(icn, 20),
       onTap: () => this.setState({ view: k }),
       style: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', padding: '8px 0 7px', background: st.view === k ? '#e8edfd' : 'none', border: 'none', borderRadius: '20px', fontSize: '10.5px', fontWeight: 600, cursor: 'pointer', color: st.view === k ? '#2f56c4' : '#8a8d99' },
       topStyle: { display: 'flex', alignItems: 'center', gap: '7px', padding: '8px 15px', background: st.view === k ? '#fff' : 'none', boxShadow: st.view === k ? '0 1px 3px rgba(23,24,28,0.08)' : 'none', border: 'none', borderRadius: '999px', fontSize: '13.5px', fontWeight: 600, cursor: 'pointer', color: st.view === k ? '#2f56c4' : '#8a8d99' }
     }));
 
-    const feedItems = db.feed.slice().reverse().map((f, i) => {
-      const d = new Date(f.ts);
-      return { key: i, time: F.mon[d.getMonth()] + ' ' + d.getDate() + ' · ' + this.t12(String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0')), text: f.text, meta: f.meta };
-    });
-
     const segBtn = on => ({ border: 'none', background: on ? '#fff' : 'none', boxShadow: on ? '0 1px 3px rgba(23,24,28,0.12)' : 'none', borderRadius: '999px', padding: '4px 11px', fontSize: '12px', fontWeight: 700, cursor: 'pointer', color: on ? '#17181c' : '#8a8d99' });
+    const busyL = (idle, key) => st.busy === key ? L.saving : idle;
 
     return {
       L,
-      ic: { video: this.icon('video', 17), cal: this.icon('cal', 18), user: this.icon('user', 18), chart: this.icon('chart', 18), gear: this.icon('gear', 18), send: this.icon('send', 16), check: this.icon('check', 13), plus: this.icon('plus', 15), x: this.icon('x', 15), download: this.icon('download', 15), swap: this.icon('swap', 14), chev: this.icon('chev', 16), lock: this.icon('lock', 18) },
+      ic: { video: this.icon('video', 17), cal: this.icon('cal', 18), user: this.icon('user', 18), chart: this.icon('chart', 18), gear: this.icon('gear', 18), send: this.icon('send', 16), check: this.icon('check', 13), plus: this.icon('plus', 15), download: this.icon('download', 15), swap: this.icon('swap', 14), chev: this.icon('chev', 16), lock: this.icon('lock', 18) },
       brand: (this.props.churchName ?? 'Stream Team'),
+      banner, bannerStyle, bannerRetry, onRetry: () => this.load(),
       langEnStyle: segBtn(lang === 'en'), langRuStyle: segBtn(lang === 'ru'),
-      setEn: () => this.commit(d2 => { d2.lang = 'en'; }),
-      setRu: () => this.commit(d2 => { d2.lang = 'ru'; }),
+      setEn: () => { this.setPref('lang', 'en'); this.setState({ lang: 'en' }); },
+      setRu: () => { this.setPref('lang', 'ru'); this.setState({ lang: 'ru' }); },
       meInitial: meM ? meM.name[0] : '?',
       meLabel: meM ? this.nameOf(db, me, lang) : L.pickName,
       meAvStyle: meM ? this.av(db, me, 28) : { width: '28px', height: '28px', flex: 'none', borderRadius: '50%', background: '#eef0f6', color: '#8a8d99', display: 'grid', placeItems: 'center', fontWeight: 700, fontSize: '12px' },
       hasMe: !!meM, mineEmpty: !meM,
       openWho: () => this.setState({ dlg: { type: 'who' } }),
-      openFeed: () => this.setState({ feedOpen: true }),
       isDesktop: st.isDesktop, isMobile: !st.isDesktop,
       tabs,
       vSched: st.view === 'sched', vMine: st.view === 'mine', vStats: st.view === 'stats', vAdmin: st.view === 'admin',
@@ -1111,115 +1158,121 @@ class Component extends DCLogic {
       pastLabel: st.showPast ? L.hidePast : L.showPast,
       togglePast: () => this.setState(s => ({ showPast: !s.showPast })),
       months,
-      heroMine, myRows, noUpcoming: !!meM && myFuture.length === 0, doneLine,
+      heroMine, myRows, noUpcoming: !!meM && myFuture.length === 0,
+      doneLine: meM ? myDone + ' ' + L.thisYear : '',
       icsHref: meM ? this.icsFor(db, me) : '',
       statRows,
       authed: st.admin, notAuthed: !st.admin,
       loginPin: st.loginPin, loginErr: st.loginErr,
-      onLoginPin: e => this.setState({ loginPin: e.target.value, loginErr: false }),
-      onLoginSubmit: e => {
+      signinLabel: busyL(L.signin, 'login'),
+      saveLabel: st.busy ? L.saving : L.save,
+      applyLabel: st.busy ? L.saving : L.apply,
+      onLoginPin: e => this.setState({ loginPin: e.target.value, loginErr: '' }),
+      onLoginSubmit: async e => {
         e.preventDefault();
-        if (st.loginPin === db.settings.pin) this.setState({ admin: true, loginPin: '', loginErr: false });
-        else this.setState({ loginErr: true });
+        this.setState({ busy: 'login', loginErr: '' });
+        try {
+          const out = await this.fn({ action: 'admin_login', pin: st.loginPin });
+          this.setState({ admin: true, pin: st.loginPin, loginPin: '', busy: '' });
+          if (out.settings) this.setState({ db: Object.assign({}, this.state.db, { settings: out.settings }) });
+        } catch (err) {
+          this.setState({ loginErr: /401|pin/i.test(String(err.message)) ? L.wrongPin : String(err.message), busy: '' });
+        }
       },
       openAutofill: () => {
         const from = todayIso, to = '2026-12-31';
-        const rangeSlots = this.autofillCompute(db, from, to, {}, true).length || 2;
-        const sumPct = db.members.reduce((a, m) => a + (m.active ? (m.pct || 0) : 0), 0) || 1;
+        const n = this.autofillCompute(db, from, to, {}, true).length || 2;
+        const sum = db.members.reduce((a, m) => a + (m.active ? (m.pct || 0) : 0), 0) || 1;
         const targets = {};
-        db.members.forEach(m => { targets[m.id] = m.active ? Math.round((m.pct || 0) * rangeSlots / sumPct) : 0; });
+        db.members.forEach(m => { targets[m.id] = m.active ? Math.round((m.pct || 0) * n / sum) : 0; });
         this.setState({ dlg: { type: 'autofill', from, to, ow: false, targets, preview: null } });
       },
       openSpecial: () => this.setState({ dlg: { type: 'special', spDate: todayIso, spTime: '19:00', spLabel: '', spWho: '' } }),
       admMembers,
       onAddMember: () => this.setState({ dlg: { type: 'member', memberId: null, mName: '', mRu: '', mTg: '', mQuota: 10, mActive: true } }),
-      sGroup: db.settings.group, sRem: db.settings.remHours,
-      onSRem: e => this.commit(d2 => { d2.settings.remHours = Math.max(1, +e.target.value || 24); }),
-      dmTrack: this.track(db.settings.dmDuty), dmKnob: this.knob(db.settings.dmDuty),
-      onSDm: () => this.commit(d2 => { d2.settings.dmDuty = !d2.settings.dmDuty; }),
-      alertTrack: this.track(db.settings.alertSwap), alertKnob: this.knob(db.settings.alertSwap),
-      onSAlert: () => this.commit(d2 => { d2.settings.alertSwap = !d2.settings.alertSwap; }),
-      onSendTest: () => { this.commit(d2 => this.pushFeed(d2, '🔧 Test message from the admin panel. If you see this in the group, the bot is wired up.', '→ group')); this.flash('✓'); },
+      sGroup: db.settings.group_name || 'Stream Team',
+      sRem: db.settings.rem_hours,
+      onSRem: e => {
+        const v = Math.max(1, Math.min(72, +e.target.value || 24));
+        this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, rem_hours: v }));
+      },
+      dmTrack: this.track(db.settings.dm_duty), dmKnob: this.knob(db.settings.dm_duty),
+      onSDm: () => this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, dm_duty: !db.settings.dm_duty })),
+      alertTrack: this.track(db.settings.alert_swap), alertKnob: this.knob(db.settings.alert_swap),
+      onSAlert: () => this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, alert_swap: !db.settings.alert_swap })),
+      onSendTest: () => this.act('test', () => this.fn({ event: 'test' })),
       queueRows,
       onOpenPin: () => this.setState({ dlg: { type: 'pin', pinNew: '' } }),
-      onLogout: () => this.setState({ admin: false, view: 'sched' }),
+      onLogout: () => this.setState({ admin: false, pin: '', view: 'sched' }),
       stop: e => e.stopPropagation(),
-      closeDlg: () => this.setState({ dlg: null, feedOpen: false }),
+      closeDlg: () => this.setState({ dlg: null }),
       dWho: D('who'), whoOpts, viewerChecked: !me,
-      onViewer: () => { this.commit(d2 => { d2.me = ''; }); this.setState({ dlg: null }); },
-      dAssign: D('assign'), aTitle: slotTitle(dlgSlot), aSub: slotSub(dlgSlot), assignOpts,
+      onViewer: () => { this.setPref('me', ''); this.setState({ me: '', dlg: null }); },
+      dAssign: D('assign'), aTitle: sTitle(dlgSlot), aSub: sSub(dlgSlot), assignOpts,
       aOpenChecked: !!dlgSlot && !dlgSlot.member,
-      onLeaveOpen: () => {
-        this.commit(d2 => {
-          const s = d2.slots[dlg.slotId]; if (!s) return;
-          s.member = ''; s.open = true; s.confirmed = false;
-          if (!Object.values(d2.requests).some(x => x.slotId === s.id && x.status === 'pending')) {
-            const id = 'r' + Date.now();
-            d2.requests[id] = { id, slotId: s.id, from: '', type: 'open', status: 'pending', ts: this.now().getTime() };
-            this.pushFeed(d2, '📣 ' + this.botSlot(d2, s) + ' needs an operator.\nOpen the app — first to accept takes it.', '→ group');
-          }
+      onLeaveOpen: () => this.act('assign', async () => {
+        await this.fn({
+          action: 'admin_set_service', pin: st.pin,
+          service: { id: dlgSlot.id, date: dlgSlot.date, part: dlgSlot.part, time: dlgSlot.time, member_id: null, special: dlgSlot.special }
         });
-        this.setState({ dlg: null });
-      },
+        const r = await this.sbq().from('requests').insert({ service_id: dlgSlot.id, from_id: null, to_id: null, status: 'pending' });
+        if (r.error) throw r.error;
+        await this.fn({ event: dlgSlot.special ? 'special_open' : 'cover_requested', service_id: dlgSlot.id, from: '' });
+      }),
       aIsSpecial: !!dlgSlot && !!dlgSlot.special,
-      onDeleteSpecial: () => { this.commit(d2 => { delete d2.slots[dlg.slotId]; Object.values(d2.requests).forEach(r => { if (r.slotId === dlg.slotId && r.status === 'pending') r.status = 'cancelled'; }); }); this.setState({ dlg: null }); },
-      dMy: D('myturn'), myTitle: slotTitle(dlgSlot), mySub: slotSub(dlgSlot),
-      myConfirmed: !!dlgSlot && dlgSlot.confirmed, myCanConfirm: !!dlgSlot && !dlgSlot.confirmed && !dlgSlot.open,
-      myNotOpen: !!dlgSlot && !dlgSlot.open && !myReq, myOpenReq: !!dlgSlot && dlgSlot.open,
+      onDeleteSpecial: () => this.act('delete', () => this.fn({ action: 'admin_delete_service', pin: st.pin, id: dlgSlot.id })),
+      dMy: D('myturn'), myTitle: sTitle(dlgSlot), mySub: sSub(dlgSlot),
+      myConfirmed: !!dlgSlot && dlgSlot.confirmed,
+      myCanConfirm: !!dlgSlot && !dlgSlot.confirmed && !dlgSlot.open,
+      myNotOpen: !!dlgSlot && !dlgSlot.open && !myReq,
+      myOpenReq: !!dlgSlot && dlgSlot.open,
       onMyConfirm: () => this.doConfirm(dlg.slotId),
       onMyOpen: () => this.doOpenReq(dlg.slotId),
       onMyCancel: () => this.doCancelReq(dlg.slotId),
       swapTo: dlg.swapTo || '', onSwapTo: fld('swapTo'), swapOpts,
       onAsk: () => this.doAsk(dlg.slotId, dlg.swapTo),
-      dCover: D('cover'), cTitle: slotTitle(dlgSlot),
-      cSub: slotSub(dlgSlot) + (dlgSlot && dlgSlot.member ? ' — ' + this.nameOf(db, dlgSlot.member, lang) : ''),
+      dCover: D('cover'), cTitle: sTitle(dlgSlot),
+      cSub: sSub(dlgSlot) + (dlgSlot && dlgSlot.member ? ' — ' + this.nameOf(db, dlgSlot.member, lang) : ''),
       onCoverGo: () => this.doCover(dlg.slotId),
       dSpecial: D('special'),
-      spDate: dlg.spDate || '', onSpDate: fld('spDate'), spTime: dlg.spTime || '19:00', onSpTime: fld('spTime'),
-      spLabel: dlg.spLabel || '', onSpLabel: fld('spLabel'), spWho: dlg.spWho || '', onSpWho: fld('spWho'),
+      spDate: dlg.spDate || '', onSpDate: fld('spDate'),
+      spTime: dlg.spTime || '19:00', onSpTime: fld('spTime'),
+      spLabel: dlg.spLabel || '', onSpLabel: fld('spLabel'),
+      spWho: dlg.spWho || '', onSpWho: fld('spWho'),
       memberOpts: db.members.filter(m => m.active).map(m => ({ id: m.id, name: this.nameOf(db, m.id, lang) })),
       onSpSave: () => {
         if (!dlg.spDate) return;
-        this.commit(d2 => {
-          const id = 'S' + dlg.spDate + (dlg.spTime || '19:00').replace(':', '');
-          d2.slots[id] = { id, date: dlg.spDate, part: 'S', time: dlg.spTime || '19:00', member: dlg.spWho || '', open: !dlg.spWho, confirmed: false, special: dlg.spLabel || 'Special service' };
-          if (dlg.spWho) {
-            this.pushFeed(d2, '⭐ New special service — ' + (dlg.spLabel || 'Special service') + '\n' + this.botSlot(d2, d2.slots[id]) + '\nOperator: ' + this.enName(d2, dlg.spWho), '→ group · DM ' + ((this.mem(d2, dlg.spWho) || {}).tg || ''));
-          } else {
-            const rid = 'r' + Date.now();
-            d2.requests[rid] = { id: rid, slotId: id, from: '', type: 'open', status: 'pending', ts: this.now().getTime() };
-            this.pushFeed(d2, '⭐ New special service — ' + (dlg.spLabel || 'Special service') + '\n' + this.botSlot(d2, d2.slots[id]) + '\nWho can take it? Open the app — first to accept gets it.', '→ group');
+        const id = 'S' + dlg.spDate + (dlg.spTime || '19:00').replace(':', '');
+        this.act('special', async () => {
+          await this.fn({
+            action: 'admin_set_service', pin: st.pin,
+            service: { id, date: dlg.spDate, part: 'S', time: (dlg.spTime || '19:00') + ':00', member_id: dlg.spWho || null, special: dlg.spLabel || 'Special service' }
+          });
+          if (!dlg.spWho) {
+            const r = await this.sbq().from('requests').insert({ service_id: id, from_id: null, to_id: null, status: 'pending' });
+            if (r.error) throw r.error;
           }
+          await this.fn({ event: dlg.spWho ? 'special_assigned' : 'special_open', service_id: id });
         });
-        this.setState({ dlg: null }); this.flash('✓');
       },
-      dMember: D('member'), mDlgTitle: dlg.memberId ? (L.edit + ' — ' + (dlg.mName || '')) : L.addMember,
-      mName: dlg.mName || '', onMName: fld('mName'), mRu: dlg.mRu || '', onMRu: fld('mRu'),
-      mTg: dlg.mTg || '', onMTg: fld('mTg'), mQuota: dlg.mQuota, onMQuota: fld('mQuota'),
+      dMember: D('member'),
+      mDlgTitle: dlg.memberId ? (L.edit + ' — ' + (dlg.mName || '')) : L.addMember,
+      mName: dlg.mName || '', onMName: fld('mName'),
+      mRu: dlg.mRu || '', onMRu: fld('mRu'),
+      mTg: dlg.mTg || '', onMTg: fld('mTg'),
+      mQuota: dlg.mQuota, onMQuota: fld('mQuota'),
       mActTrack: this.track(!!dlg.mActive), mActKnob: this.knob(!!dlg.mActive),
       onMActive: () => set({ mActive: !dlg.mActive }),
       mCanDelete: !!dlg.memberId,
       onMSave: () => {
         if (!dlg.mName) return;
-        this.commit(d2 => {
-          if (dlg.memberId) {
-            const m = d2.members.find(x => x.id === dlg.memberId);
-            if (m) { m.name = dlg.mName; m.ru = dlg.mRu; m.tg = dlg.mTg; m.pct = Math.max(0, Math.min(100, +dlg.mQuota || 0)); m.active = !!dlg.mActive; }
-          } else {
-            const id = dlg.mName.toLowerCase().replace(/[^a-zа-я0-9]/g, '') + Date.now() % 1000;
-            d2.members.push({ id, name: dlg.mName, ru: dlg.mRu, tg: dlg.mTg, pct: Math.max(0, Math.min(100, +dlg.mQuota || 0)), active: !!dlg.mActive });
-          }
-        });
-        this.setState({ dlg: null }); this.flash('✓');
+        const id = dlg.memberId || (String(dlg.mName).toLowerCase().replace(/[^a-z0-9]/g, '') || 'm') + Date.now() % 10000;
+        this.act('member', () => this.fn({
+          action: 'admin_save_member', pin: st.pin,
+          member: { id, name: dlg.mName, name_ru: dlg.mRu, telegram: dlg.mTg, share_pct: Math.max(0, Math.min(100, +dlg.mQuota || 0)), active: !!dlg.mActive }
+        }));
       },
-      onMDelete: () => {
-        this.commit(d2 => {
-          d2.members = d2.members.filter(x => x.id !== dlg.memberId);
-          Object.values(d2.slots).forEach(s => { if (s.member === dlg.memberId && this.dtOf(s) > this.now()) { s.member = ''; s.open = true; } });
-          if (d2.me === dlg.memberId) d2.me = '';
-        });
-        this.setState({ dlg: null });
-      },
+      onMDelete: () => this.act('member', () => this.fn({ action: 'admin_delete_member', pin: st.pin, id: dlg.memberId })),
       dAf: D('autofill'),
       afFrom: dlg.from || '', onAfFrom: e => set({ from: e.target.value, preview: null }),
       afTo: dlg.to || '', onAfTo: e => set({ to: e.target.value, preview: null }),
@@ -1227,29 +1280,24 @@ class Component extends DCLogic {
       onAfOw: () => set({ ow: !dlg.ow, preview: null }),
       afTargets, afPreviewOn: !!dlg.preview, afRows, afSummary,
       afEmpty: !!dlg.preview && afRows.length === 0,
-      afApplyDisabled: !dlg.preview || afRows.length === 0,
+      afApplyDisabled: !dlg.preview || afRows.length === 0 || !!st.busy,
       onAfGen: () => set({ preview: this.autofillCompute(db, dlg.from, dlg.to, dlg.targets || {}, !!dlg.ow) }),
       onAfApply: () => {
-        const plan = (dlg.preview || []).filter(p => p.member);
+        const plan = (dlg.preview || []).filter(p => p.member).map(p => ({
+          id: p.date + p.part, date: p.date, part: p.part, time: p.time + ':00', member_id: p.member
+        }));
         if (!plan.length) return;
-        this.commit(d2 => {
-          plan.forEach(p => {
-            const id = p.date + p.part;
-            d2.slots[id] = { id, date: p.date, part: p.part, time: p.time, member: p.member, open: false, confirmed: false, special: '' };
-            const r = Object.values(d2.requests).find(x => x.slotId === id && x.status === 'pending');
-            if (r) r.status = 'cancelled';
-          });
-          this.pushFeed(d2, '📅 Schedule updated — ' + plan.length + ' services assigned (' + this.botDate(plan[0].date) + ' → ' + this.botDate(plan[plan.length - 1].date) + '). Check your turns in the app.', '→ group');
-        });
-        this.setState({ dlg: null }); this.flash('✓ ' + plan.length);
+        this.act('autofill', () => this.fn({ action: 'admin_apply_plan', pin: st.pin, plan }));
       },
       dPin: D('pin'), pinNew: dlg.pinNew || '', onPinNew: fld('pinNew'),
-      onPinSave: () => { if (dlg.pinNew) { this.commit(d2 => { d2.settings.pin = dlg.pinNew; }); this.setState({ dlg: null }); this.flash('✓'); } },
-      feedOpen: st.feedOpen,
-      feedPanelStyle: st.isDesktop
-        ? { position: 'absolute', top: 0, right: 0, bottom: 0, width: '420px', background: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '-8px 0 30px rgba(23,24,28,0.12)' }
-        : { position: 'absolute', left: 0, right: 0, bottom: 0, top: '13%', background: '#fff', borderRadius: '24px 24px 0 0', display: 'flex', flexDirection: 'column', animation: 'sheet .25s ease both' },
-      feedItems,
+      onPinSave: () => {
+        if (!dlg.pinNew || String(dlg.pinNew).length < 4) { this.flash('⚠ 4+'); return; }
+        const np = String(dlg.pinNew);
+        this.act('pin', async () => {
+          await this.fn({ action: 'admin_change_pin', pin: st.pin, new_pin: np });
+          this.setState({ pin: np });
+        });
+      },
       toast: st.toast
     };
   }

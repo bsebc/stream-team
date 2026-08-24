@@ -1,18 +1,105 @@
--- Stream Team — 2026 schedule, taken from Video Schedule.xlsx
--- Run this in the Supabase SQL Editor AFTER creating the tables (step 3 of the launch guide).
+-- ============================================================
+-- Stream Team — full database setup, isolated in its own schema
+-- Safe to run inside an existing Supabase project.
+-- Paste the whole file into the SQL Editor and hit Run once.
+-- ============================================================
 
-insert into members (id, name, name_ru, telegram, share_pct, active) values
+-- ---------- 1. Schema ----------
+-- Everything lives under "stream." so it cannot collide with the
+-- tables your other app already has in "public".
+
+create schema if not exists stream;
+
+-- ---------- 2. Tables ----------
+
+create table stream.members (
+  id         text primary key,          -- 'vanya'
+  name       text not null,
+  name_ru    text,
+  telegram   text,                      -- '@vanya'
+  chat_id    bigint,                    -- filled when they DM the bot
+  share_pct  int  not null default 10,  -- target share of services
+  active     bool not null default true
+);
+
+create table stream.services (
+  id         text primary key,          -- '2026-08-30M'
+  date       date not null,
+  part       text not null check (part in ('M','E','S')),
+  time       time not null,
+  member_id  text references stream.members(id) on delete set null,
+  special    text not null default '',  -- 'Christmas Eve' for one-offs
+  open       bool not null default false,-- someone asked for cover
+  confirmed  bool not null default false,
+  notified   bool not null default false -- reminder already sent
+);
+
+create index on stream.services (date);
+create index on stream.services (member_id);
+
+create table stream.requests (
+  id         uuid primary key default gen_random_uuid(),
+  service_id text references stream.services(id) on delete cascade,
+  from_id    text references stream.members(id),
+  to_id      text references stream.members(id),  -- null = open to all
+  status     text not null default 'pending',
+  created_at timestamptz not null default now()
+);
+
+create table stream.settings (
+  id          int primary key default 1,
+  admin_pin   text not null default '1234',
+  group_name  text not null default 'Stream Team',
+  rem_hours   int  not null default 24,
+  dm_duty     bool not null default true,
+  alert_swap  bool not null default true
+);
+
+insert into stream.settings (id) values (1);
+
+-- ---------- 3. Security ----------
+-- Anyone can read the schedule. Members can claim a turn, confirm,
+-- and open a request. Nobody can touch members or settings from the
+-- browser — admin actions go through the Edge Function.
+
+alter table stream.members  enable row level security;
+alter table stream.services enable row level security;
+alter table stream.requests enable row level security;
+alter table stream.settings enable row level security;
+
+create policy "read members"  on stream.members  for select using (true);
+create policy "read services" on stream.services for select using (true);
+create policy "read requests" on stream.requests for select using (true);
+
+create policy "claim service"  on stream.services for update using (true) with check (true);
+create policy "open request"   on stream.requests for insert with check (true);
+create policy "answer request" on stream.requests for update using (true) with check (true);
+
+-- settings: no browser access at all (service key bypasses RLS)
+
+-- ---------- 4. API access ----------
+-- Lets the app reach the schema through the REST API.
+
+grant usage on schema stream to anon, authenticated;
+grant select on all tables in schema stream to anon, authenticated;
+grant update on stream.services to anon, authenticated;
+grant insert, update on stream.requests to anon, authenticated;
+
+-- ---------- 5. Your team ----------
+-- Replace the @handles with each person's real Telegram username.
+
+insert into stream.members (id, name, name_ru, telegram, share_pct, active) values
   ('roman',  'Roman',  'Роман',  '@roman',  19, true),
   ('vanya',  'Vanya',  'Ваня',   '@vanya',  25, true),
   ('vlad',   'Vlad',   'Влад',   '@vlad',   25, true),
   ('tima',   'Tima',   'Тима',   '@tima',   12, true),
   ('viktor', 'Viktor', 'Виктор', '@viktor', 10, true),
-  ('nate',   'Nate',   'Нейт',   '@nate',   10, true)
-on conflict (id) do nothing;
+  ('nate',   'Nate',   'Нейт',   '@nate',   10, true);
 
--- Replace the @handles above with each person's real Telegram username.
+-- ---------- 6. The 2026 schedule ----------
+-- Straight from Video Schedule.xlsx. Morning 10:00, Evening 18:00.
 
-insert into services (id, date, part, time, member_id) values
+insert into stream.services (id, date, part, time, member_id) values
   ('2026-01-04M', '2026-01-04', 'M', '10:00', 'roman'),
   ('2026-01-04E', '2026-01-04', 'E', '18:00', 'vanya'),
   ('2026-01-11M', '2026-01-11', 'M', '10:00', 'vanya'),
@@ -116,9 +203,14 @@ insert into services (id, date, part, time, member_id) values
   ('2026-12-20M', '2026-12-20', 'M', '10:00', 'vlad'),
   ('2026-12-20E', '2026-12-20', 'E', '18:00', 'roman'),
   ('2026-12-27M', '2026-12-27', 'M', '10:00', 'viktor'),
-  ('2026-12-27E', '2026-12-27', 'E', '18:00', 'nate')
-on conflict (id) do nothing;
+  ('2026-12-27E', '2026-12-27', 'E', '18:00', 'nate');
 
--- Sanity check: should return 104 rows, and the per-person totals
--- should match the spreadsheet (Vanya 26, Vlad 26, Roman 20, Tima 12, Viktor 10, Nate 10).
-select member_id, count(*) from services group by member_id order by 2 desc;
+-- ---------- 7. Check it worked ----------
+-- Expect 104 services and: Vanya 26, Vlad 26, Roman 20,
+-- Tima 12, Viktor 10, Nate 10.
+
+select m.name, count(*) as services
+from stream.services s
+join stream.members m on m.id = s.member_id
+group by m.name
+order by services desc;
