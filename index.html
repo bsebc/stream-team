@@ -135,6 +135,9 @@ input::placeholder { color: #a2a5b3; }
             </sc-for>
           </div>
         </sc-for>
+        <sc-if value="{{ schedEmpty }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(23,24,28,0.06);padding:22px;margin-top:14px;text-align:center;font-size:13.5px;color:#8a8d99;text-wrap:pretty">{{ schedEmpty }}</div>
+        </sc-if>
         <sc-if value="{{ moreLabel }}" hint-placeholder-val="{{ false }}">
           <button type="button" onClick="{{ onMore }}" style="width:100%;margin-top:14px;border:none;background:#fff;box-shadow:0 1px 3px rgba(23,24,28,0.06);border-radius:16px;padding:14px;font-size:14px;font-weight:700;color:#3b6ef6;cursor:pointer">{{ moreLabel }}</button>
         </sc-if>
@@ -196,7 +199,7 @@ input::placeholder { color: #a2a5b3; }
 
     <sc-if value="{{ vStats }}" hint-placeholder-val="{{ false }}">
       <section data-screen-label="Stats">
-        <div style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99;margin:20px 4px 8px">{{ L.statsTitle }}</div>
+        <div style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99;margin:20px 4px 8px">{{ statsTitle }}</div>
         <div style="background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(23,24,28,0.06);overflow:hidden">
           <sc-for list="{{ statRows }}" as="st" hint-placeholder-count="6">
             <div style="{{ st.rowStyle }}">
@@ -269,15 +272,24 @@ input::placeholder { color: #a2a5b3; }
             </div>
             <div style="display:flex;align-items:center;gap:10px">
               <span style="flex:1;font-size:13.5px">{{ L.remBefore }}</span>
-              <input type="number" min="1" max="72" value="{{ sRem }}" onChange="{{ onSRem }}" style="width:64px;border:none;background:#eef0f6;border-radius:10px;padding:8px 10px;text-align:right;font-size:14px">
+              <input type="number" min="1" max="72" value="{{ sRem }}" onChange="{{ onSRem }}" onBlur="{{ onSRemCommit }}" style="width:64px;border:none;background:#eef0f6;border-radius:10px;padding:8px 10px;text-align:right;font-size:14px">
             </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="flex:1;font-size:13.5px">{{ L.dmDuty }}</span>
-              <button type="button" onClick="{{ onSDm }}" style="{{ dmTrack }}"><span style="{{ dmKnob }}"></span></button>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <span style="flex:1;font-size:13.5px">{{ L.alertSwap }}</span>
-              <button type="button" onClick="{{ onSAlert }}" style="{{ alertTrack }}"><span style="{{ alertKnob }}"></span></button>
+            <div style="border-top:1px solid #eef0f4;padding-top:12px">
+              <div style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#a2a5b3">{{ L.nWhat }}</div>
+              <div style="font-size:11.5px;color:#a2a5b3;margin-top:7px;margin-bottom:2px">{{ L.nGroup }}</div>
+              <sc-for list="{{ notifGroup }}" as="n" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+                  <span style="flex:1;font-size:13.5px">{{ n.label }}</span>
+                  <button type="button" onClick="{{ n.onTap }}" style="{{ n.track }}"><span style="{{ n.knob }}"></span></button>
+                </div>
+              </sc-for>
+              <div style="font-size:11.5px;color:#a2a5b3;margin-top:11px;margin-bottom:2px">{{ L.nDm }}</div>
+              <sc-for list="{{ notifDm }}" as="n" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:10px;padding:5px 0">
+                  <span style="flex:1;font-size:13.5px">{{ n.label }}</span>
+                  <button type="button" onClick="{{ n.onTap }}" style="{{ n.track }}"><span style="{{ n.knob }}"></span></button>
+                </div>
+              </sc-for>
             </div>
             <div style="border-top:1px solid #eef0f4;padding-top:11px">
               <div style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#a2a5b3;margin-bottom:6px">{{ L.queued }}</div>
@@ -451,15 +463,30 @@ input::placeholder { color: #a2a5b3; }
           <label style="display:block"><span style="display:block;font-size:12px;font-weight:600;color:#8a8d99;margin-bottom:5px">{{ L.from }}</span><input type="date" value="{{ afFrom }}" onChange="{{ onAfFrom }}" style="width:100%;border:none;background:#eef0f6;border-radius:12px;padding:10px 12px;font-size:14px"></label>
           <label style="display:block"><span style="display:block;font-size:12px;font-weight:600;color:#8a8d99;margin-bottom:5px">{{ L.to }}</span><input type="date" value="{{ afTo }}" onChange="{{ onAfTo }}" style="width:100%;border:none;background:#eef0f6;border-radius:12px;padding:10px 12px;font-size:14px"></label>
         </div>
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#a2a5b3;margin:14px 0 6px">{{ L.afTargets }}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin:14px 0 2px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#a2a5b3">{{ L.afTargets }}</span>
+          <span style="flex:1"></span>
+          <span style="{{ afTotalStyle }}">{{ afTotalLabel }}</span>
+        </div>
+        <div style="font-size:11.5px;color:#a2a5b3;margin-bottom:8px">{{ afSlotsLine }}</div>
         <div style="display:flex;flex-direction:column;gap:7px">
           <sc-for list="{{ afTargets }}" as="tg" hint-placeholder-count="6">
             <div style="display:flex;align-items:center;gap:10px">
               <span style="flex:1;font-size:14px;font-weight:500">{{ tg.name }}</span>
-              <input type="number" min="0" max="200" value="{{ tg.val }}" onChange="{{ tg.onCh }}" style="width:70px;border:none;background:#eef0f6;border-radius:10px;padding:8px 10px;text-align:right;font-size:14px">
+              <span style="font-size:11.5px;color:#8a8d99;min-width:44px;text-align:right">{{ tg.count }}</span>
+              <span style="display:inline-flex;align-items:center;background:#eef0f6;border-radius:10px;padding:0 10px 0 0">
+                <input type="number" min="0" max="100" value="{{ tg.val }}" onChange="{{ tg.onCh }}" style="width:56px;border:none;background:none;padding:8px 4px 8px 10px;text-align:right;font-size:14px">
+                <span style="font-size:13px;color:#8a8d99;font-weight:600">%</span>
+              </span>
             </div>
           </sc-for>
         </div>
+        <sc-if value="{{ afWarn }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:10px;margin-top:9px">
+            <span style="flex:1;font-size:12px;color:#b4262b;font-weight:600">{{ afWarn }}</span>
+            <sc-if value="{{ afShowBalance }}"><button type="button" onClick="{{ onAfBalance }}" style="border:none;background:#e8edfd;color:#2f56c4;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer">{{ L.afBalance }}</button></sc-if>
+          </div>
+        </sc-if>
         <div style="display:flex;align-items:center;gap:10px;margin-top:13px">
           <span style="flex:1;font-size:13.5px">{{ L.overwrite }}</span>
           <button type="button" onClick="{{ onAfOw }}" style="{{ owTrack }}"><span style="{{ owKnob }}"></span></button>
@@ -472,7 +499,7 @@ input::placeholder { color: #a2a5b3; }
           <div style="font-size:12.5px;color:#2f56c4;font-weight:600;margin-top:8px">{{ afSummary }}</div>
         </sc-if>
         <div style="display:flex;gap:8px;margin-top:15px">
-          <button type="button" onClick="{{ onAfGen }}" style="flex:1;border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.generate }}</button>
+          <button type="button" onClick="{{ onAfGen }}" disabled="{{ afGenDisabled }}" style="{{ afGenStyle }}">{{ L.generate }}</button>
           <button type="button" onClick="{{ onAfApply }}" disabled="{{ afApplyDisabled }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ applyLabel }}</button>
         </div>
       </div>
@@ -509,7 +536,7 @@ class Component extends DCLogic {
     view: 'sched', admin: false, pin: '',
     dlg: null, toast: '', showPast: false, isDesktop: false,
     loginPin: '', loginErr: '', tick: 0,
-    year: '', monthLimit: 6
+    year: '', monthLimit: 6, remDraft: null
   };
   PAGE = 6;
 
@@ -677,12 +704,20 @@ class Component extends DCLogic {
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
       showPast: 'Show past', hidePast: 'Hide past', special: 'Special', open: 'Open', waiting: 'Waiting', live: 'LIVE',
       showMore: 'Show {n} more months',
+      emptyPast: 'Nothing upcoming in {y}. Turn on Show past to see it.',
+      emptyYear: 'Nothing scheduled in {y} yet. Use Auto-fill in Admin to plan it.',
       addCalendar: 'Subscribe in calendar', upcoming: 'Upcoming', noUpcoming: 'No upcoming turns.', thisYear: 'done this year',
-      statsTitle: 'Season 2026', done: 'done', ahead: 'ahead', statsNote: 'Plan = target share of all services this year. Bar shows assigned vs plan.',
+      season: 'Season', done: 'done', ahead: 'ahead', statsNote: 'Plan = target share of the year\u2019s services. Bar shows assigned vs plan.',
       members: 'Members', addMember: 'Add', edit: 'Edit',
-      autofill: 'Auto-fill', autofillSub: 'Spread services by each member\u2019s share', afSub: 'Assigns Sunday morning + evening services across the range.', afTargets: 'Services to assign',
+      autofill: 'Auto-fill', autofillSub: 'Spread services by each member\u2019s share', afSub: 'Assigns Sunday morning + evening services across the range.',
+      afTargets: 'Share of services', afTotal: 'Total', afMustBe: 'must add up to 100%', afBalance: 'Balance to 100%',
+      afSlots: '{n} services to assign in this range', svcShort: 'svc',
       addSpecial: 'Special service', addSpecialSub: 'e.g. Christmas on a Thursday', spPh: 'Christmas Eve', askAll: 'Ask the group — first to accept', spNote: 'If no one is assigned, the bot asks the group and the first member to accept takes it.',
-      telegram: 'Telegram bot', tgConnected: 'Connected', remBefore: 'Reminder, hours before', dmDuty: 'Also DM the on-duty operator', alertSwap: 'Post replacement requests',
+      telegram: 'Telegram bot', tgConnected: 'Connected', remBefore: 'Reminder, hours before',
+      nWhat: 'What the bot posts', nGroup: 'To the group', nDm: 'Direct messages',
+      nRemGroup: 'Upcoming turn', nRemDm: 'Upcoming turn, to the operator', nSwap: 'Replacement requests',
+      nPickup: 'Pickups and swaps', nConfirm: 'Confirmations', nSchedule: 'Schedule updates',
+      dmDuty: 'Also DM the on-duty operator', alertSwap: 'Post replacement requests',
       sendTest: 'Send test message', queued: 'Next reminders',
       signin: 'Sign in', pin: 'Admin PIN', pinHint: 'The PIN is checked on the server, not in this page.', wrongPin: 'Wrong PIN', changePin: 'Change PIN', newPin: 'New PIN', logout: 'Log out',
       whoTitle: 'Who are you?', whoSub: 'Saved on this device only.', viewer: 'Just viewing', pickName: 'Pick my name', mineEmpty: 'Pick your name once and this tab will show your turns, reminders and requests.',
@@ -702,12 +737,20 @@ class Component extends DCLogic {
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
       showMore: 'Показать ещё {n} мес.',
+      emptyPast: 'В {y} предстоящих служб нет. Включите «Показать прошедшие».',
+      emptyYear: 'На {y} пока ничего не запланировано. Используйте автозаполнение в разделе «Админ».',
       addCalendar: 'Подписаться в календаре', upcoming: 'Предстоящие', noUpcoming: 'Предстоящих смен нет.', thisYear: 'сделано в этом году',
-      statsTitle: 'Сезон 2026', done: 'сделано', ahead: 'впереди', statsNote: 'План — целевая доля всех служб за год. Полоса: назначено против плана.',
+      season: 'Сезон', done: 'сделано', ahead: 'впереди', statsNote: 'План — целевая доля всех служб за год. Полоса: назначено против плана.',
       members: 'Участники', addMember: 'Добавить', edit: 'Изменить',
-      autofill: 'Автозаполнение', autofillSub: 'Распределить службы по доле каждого', afSub: 'Назначает утренние и вечерние службы в диапазоне.', afTargets: 'Сколько служб назначить',
+      autofill: 'Автозаполнение', autofillSub: 'Распределить службы по доле каждого', afSub: 'Назначает утренние и вечерние службы в диапазоне.',
+      afTargets: 'Доля служб', afTotal: 'Всего', afMustBe: 'должно быть 100%', afBalance: 'Выровнять до 100%',
+      afSlots: 'служб к назначению в диапазоне: {n}', svcShort: 'сл.',
       addSpecial: 'Особая служба', addSpecialSub: 'например, Рождество в четверг', spPh: 'Сочельник', askAll: 'Спросить группу — кто первый', spNote: 'Если никто не назначен, бот спросит группу — служба достанется первому, кто примет её.',
-      telegram: 'Телеграм-бот', tgConnected: 'Подключен', remBefore: 'Напоминание, часов до', dmDuty: 'Дублировать дежурному в личку', alertSwap: 'Публиковать запросы замен',
+      telegram: 'Телеграм-бот', tgConnected: 'Подключен', remBefore: 'Напоминание, часов до',
+      nWhat: 'Что публикует бот', nGroup: 'В группу', nDm: 'Личные сообщения',
+      nRemGroup: 'Напоминание о смене', nRemDm: 'Напоминание дежурному в личку', nSwap: 'Запросы замен',
+      nPickup: 'Замены и подмены', nConfirm: 'Подтверждения', nSchedule: 'Изменения расписания',
+      dmDuty: 'Дублировать дежурному в личку', alertSwap: 'Публиковать запросы замен',
       sendTest: 'Тестовое сообщение', queued: 'Ближайшие напоминания',
       signin: 'Войти', pin: 'PIN администратора', pinHint: 'PIN проверяется на сервере, а не в этой странице.', wrongPin: 'Неверный PIN', changePin: 'Сменить PIN', newPin: 'Новый PIN', logout: 'Выйти',
       whoTitle: 'Кто вы?', whoSub: 'Сохраняется только на этом устройстве.', viewer: 'Просто смотрю', pickName: 'Выбрать имя', mineEmpty: 'Выберите имя один раз — здесь появятся ваши смены, напоминания и запросы.',
@@ -770,8 +813,14 @@ class Component extends DCLogic {
       const sb = this.sbq();
       let r = await sb.from('services').update({ open: true }).eq('id', id);
       if (r.error) throw r.error;
-      r = await sb.from('requests').insert({ service_id: id, from_id: from, to_id: null, status: 'pending' });
-      if (r.error) throw r.error;
+      // don't stack duplicate pending requests on a double-tap
+      const ex = await sb.from('requests').select('id')
+        .eq('service_id', id).eq('status', 'pending').limit(1);
+      if (ex.error) throw ex.error;
+      if (!ex.data.length) {
+        r = await sb.from('requests').insert({ service_id: id, from_id: from, to_id: null, status: 'pending' });
+        if (r.error) throw r.error;
+      }
       await this.fn({ event: 'cover_requested', service_id: id, from });
     });
   }
@@ -796,15 +845,17 @@ class Component extends DCLogic {
     const req = this.reqFor(this.state.db, id);
     this.act('cover', async () => {
       const sb = this.sbq();
-      // guard: only take it if it is still open / unclaimed
-      const cur = await sb.from('services').select('member_id, open').eq('id', id).single();
-      if (cur.error) throw cur.error;
-      if (cur.data.member_id && cur.data.member_id !== was && !cur.data.open) {
-        throw new Error('already taken');
-      }
+      // One atomic UPDATE: the row is only taken if it is STILL open (or
+      // still unassigned). Two people tapping at the same moment means the
+      // second one's WHERE matches nothing and they are told it is taken,
+      // instead of both writing and both being announced to the group.
       let r = await sb.from('services')
-        .update({ member_id: me, open: false, confirmed: false, notified: false }).eq('id', id);
+        .update({ member_id: me, open: false, confirmed: false, notified: false })
+        .eq('id', id)
+        .or('open.eq.true,member_id.is.null')
+        .select('id');
       if (r.error) throw r.error;
+      if (!r.data || !r.data.length) throw new Error(this.dict(this.state.lang).taken);
       if (req) {
         r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
         if (r.error) throw r.error;
@@ -843,6 +894,41 @@ class Component extends DCLogic {
   }
 
   // ---------- autofill ----------
+
+  // How many M/E slots the range would actually fill.
+  slotsInRange(db, from, to, ow) {
+    const start = new Date(from + 'T00:00'), end = new Date(to + 'T23:59');
+    if (isNaN(start) || isNaN(end) || end < start) return 0;
+    const d = new Date(start);
+    while (d.getDay() !== 0) d.setDate(d.getDate() + 1);
+    let n = 0; const nowT = this.now();
+    for (; d <= end; d.setDate(d.getDate() + 7)) {
+      const date = this.iso(d);
+      ['M', 'E'].forEach(part => {
+        const t = part === 'M' ? '10:00' : '18:00';
+        if (new Date(date + 'T' + t) <= nowT) return;
+        const ex = db.slots[date + part];
+        if (ex && ex.member && !ow) return;
+        n++;
+      });
+    }
+    return n;
+  }
+
+  // Percentages -> whole service counts summing exactly to n
+  // (largest-remainder, so 25% of 103 doesn't quietly lose a service).
+  pctToTargets(pcts, ids, n) {
+    const rows = ids.map(id => {
+      const v = (+pcts[id] || 0) / 100 * n;
+      return { id, f: Math.floor(v), rem: v - Math.floor(v) };
+    });
+    let used = rows.reduce((a, b) => a + b.f, 0);
+    rows.sort((a, b) => b.rem - a.rem);
+    for (let i = 0; used < n && i < rows.length; i++) { rows[i].f++; used++; }
+    const out = {};
+    rows.forEach(r => out[r.id] = r.f);
+    return out;
+  }
 
   autofillCompute(db, from, to, targets, ow) {
     const start = new Date(from + 'T00:00'), end = new Date(to + 'T23:59');
@@ -1093,13 +1179,13 @@ class Component extends DCLogic {
         style: { display: 'flex', alignItems: 'center', gap: '10px', border: 'none', background: 'none', padding: '12px 14px', cursor: 'pointer', width: '100%', borderTop: i ? '1px solid #eef0f4' : 'none' }
       };
     });
-    const myDone = list.filter(s => s.member === me && this.dtOf(s) <= now).length;
+    const myDone = inYear.filter(s => s.member === me && this.dtOf(s) <= now).length;
 
-    // stats
-    const totalYear = list.length || 1;
+    // stats — scoped to the selected year, not every year in the table
+    const totalYear = inYear.length || 1;
     const statRows = db.members.map(m => {
-      const done = list.filter(s => s.member === m.id && this.dtOf(s) <= now).length;
-      const ahead = list.filter(s => s.member === m.id && this.dtOf(s) > now).length;
+      const done = inYear.filter(s => s.member === m.id && this.dtOf(s) <= now).length;
+      const ahead = inYear.filter(s => s.member === m.id && this.dtOf(s) > now).length;
       const actual = Math.round((done + ahead) / totalYear * 100);
       const w = m.pct ? Math.min(100, Math.round(actual / m.pct * 100)) : 0;
       return {
@@ -1151,9 +1237,18 @@ class Component extends DCLogic {
     const myReq = dlgSlot ? this.reqFor(db, dlgSlot.id) : null;
     const swapOpts = [{ id: '', name: '—' }].concat(db.members.filter(m => m.active && m.id !== me).map(m => ({ id: m.id, name: this.nameOf(db, m.id, lang) })));
 
-    const afTargets = D('autofill') ? db.members.filter(m => m.active).map(m => ({
-      id: m.id, name: this.nameOf(db, m.id, lang), val: (dlg.targets || {})[m.id] || 0,
-      onCh: e => set({ targets: Object.assign({}, dlg.targets, { [m.id]: e.target.value }), preview: null })
+    // ---- autofill: percentages, forced to total 100% ----
+    const afActive = db.members.filter(m => m.active);
+    const afIds = afActive.map(m => m.id);
+    const afSlots = D('autofill') ? this.slotsInRange(db, dlg.from, dlg.to, !!dlg.ow) : 0;
+    const afTotal = afIds.reduce((a, id) => a + (+(dlg.pcts || {})[id] || 0), 0);
+    const afValid = afTotal === 100;
+    const afCounts = D('autofill') && afValid ? this.pctToTargets(dlg.pcts || {}, afIds, afSlots) : {};
+    const afTargets = D('autofill') ? afActive.map(m => ({
+      id: m.id, name: this.nameOf(db, m.id, lang),
+      val: (dlg.pcts || {})[m.id] ?? 0,
+      count: afValid ? (afCounts[m.id] + ' ' + L.svcShort) : '',
+      onCh: e => set({ pcts: Object.assign({}, dlg.pcts, { [m.id]: e.target.value }), preview: null })
     })) : [];
     const afPlan = dlg.preview || [];
     const afRows = afPlan.filter(p => p.member).map((p, i) => {
@@ -1197,6 +1292,9 @@ class Component extends DCLogic {
       pastLabel: st.showPast ? L.hidePast : L.showPast,
       togglePast: () => this.setState(s => ({ showPast: !s.showPast, monthLimit: this.PAGE })),
       yearPills, hasYears: yearPills.length > 0,
+      schedEmpty: (st.ready && months.length === 0)
+        ? (inYear.length ? L.emptyPast : L.emptyYear).replace('{y}', year)
+        : '',
       months: months.slice(0, st.monthLimit),
       moreLabel: months.length > st.monthLimit
         ? L.showMore.replace('{n}', Math.min(this.PAGE, months.length - st.monthLimit))
@@ -1205,7 +1303,7 @@ class Component extends DCLogic {
       heroMine, myRows, noUpcoming: !!meM && myFuture.length === 0,
       doneLine: meM ? myDone + ' ' + L.thisYear : '',
       icsHref: meM ? this.icsFor(db, me) : '',
-      statRows,
+      statRows, statsTitle: L.season + ' ' + year,
       authed: st.admin, notAuthed: !st.admin,
       loginPin: st.loginPin, loginErr: st.loginErr,
       signinLabel: busyL(L.signin, 'login'),
@@ -1227,26 +1325,61 @@ class Component extends DCLogic {
         }
       },
       openAutofill: () => {
-        const from = todayIso, to = '2026-12-31';
-        const n = this.autofillCompute(db, from, to, {}, true).length || 2;
-        const sum = db.members.reduce((a, m) => a + (m.active ? (m.pct || 0) : 0), 0) || 1;
-        const targets = {};
-        db.members.forEach(m => { targets[m.id] = m.active ? Math.round((m.pct || 0) * n / sum) : 0; });
-        this.setState({ dlg: { type: 'autofill', from, to, ow: false, targets, preview: null } });
+        // seed from each member's saved share, normalised to exactly 100%
+        const act = db.members.filter(m => m.active);
+        const sum = act.reduce((a, m) => a + (m.pct || 0), 0);
+        const pcts = {};
+        if (sum > 0) {
+          const scaled = act.map(m => ({ id: m.id, v: (m.pct || 0) / sum * 100 }));
+          let used = 0;
+          scaled.forEach(s => { pcts[s.id] = Math.floor(s.v); used += Math.floor(s.v); });
+          scaled.sort((a, b) => (b.v % 1) - (a.v % 1));
+          for (let i = 0; used < 100 && i < scaled.length; i++) { pcts[scaled[i].id]++; used++; }
+        } else {
+          act.forEach((m, i) => pcts[m.id] = Math.floor(100 / act.length) + (i < 100 % act.length ? 1 : 0));
+        }
+        const y = String(now.getFullYear() + 1);
+        this.setState({ dlg: { type: 'autofill', from: todayIso, to: y + '-12-31', ow: false, pcts, preview: null } });
       },
       openSpecial: () => this.setState({ dlg: { type: 'special', spDate: todayIso, spTime: '19:00', spLabel: '', spWho: '' } }),
       admMembers,
       onAddMember: () => this.setState({ dlg: { type: 'member', memberId: null, mName: '', mRu: '', mTg: '', mQuota: 10, mActive: true } }),
       sGroup: db.settings.group_name || 'Stream Team',
-      sRem: db.settings.rem_hours,
-      onSRem: e => {
-        const v = Math.max(1, Math.min(72, +e.target.value || 24));
-        this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, rem_hours: v }));
+      // Typed digits are held locally and only saved on blur — writing on
+      // every keystroke would briefly set rem_hours to "2" while typing "24".
+      sRem: st.remDraft === null ? db.settings.rem_hours : st.remDraft,
+      onSRem: e => this.setState({ remDraft: e.target.value }),
+      onSRemCommit: () => {
+        if (st.remDraft === null) return;
+        const v = Math.max(1, Math.min(72, +st.remDraft || 24));
+        this.setState({ remDraft: null });
+        if (v !== db.settings.rem_hours) {
+          this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, rem_hours: v }));
+        }
       },
-      dmTrack: this.track(db.settings.dm_duty), dmKnob: this.knob(db.settings.dm_duty),
-      onSDm: () => this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, dm_duty: !db.settings.dm_duty })),
-      alertTrack: this.track(db.settings.alert_swap), alertKnob: this.knob(db.settings.alert_swap),
-      onSAlert: () => this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, alert_swap: !db.settings.alert_swap })),
+      // one row per message type — group posts first, then DMs
+      notifGroup: [
+        ['notify_reminder_group', L.nRemGroup, true],
+        ['alert_swap', L.nSwap, true],
+        ['notify_pickup', L.nPickup, true],
+        ['notify_confirm', L.nConfirm, false],
+        ['notify_schedule', L.nSchedule, true]
+      ].map(([k, labelTxt, def]) => {
+        const on = db.settings[k] ?? def;
+        return {
+          key: k, label: labelTxt,
+          track: this.track(on), knob: this.knob(on),
+          onTap: () => this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, [k]: !on }))
+        };
+      }),
+      notifDm: [['dm_duty', L.nRemDm, true]].map(([k, labelTxt, def]) => {
+        const on = db.settings[k] ?? def;
+        return {
+          key: k, label: labelTxt,
+          track: this.track(on), knob: this.knob(on),
+          onTap: () => this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, [k]: !on }))
+        };
+      }),
       onSendTest: () => this.act('test', () => this.fn({ event: 'test' })),
       queueRows,
       onOpenPin: () => this.setState({ dlg: { type: 'pin', pinNew: '' } }),
@@ -1326,9 +1459,36 @@ class Component extends DCLogic {
       owTrack: this.track(!!dlg.ow), owKnob: this.knob(!!dlg.ow),
       onAfOw: () => set({ ow: !dlg.ow, preview: null }),
       afTargets, afPreviewOn: !!dlg.preview, afRows, afSummary,
+      afSlotsLine: L.afSlots.replace('{n}', afSlots),
+      afTotalLabel: L.afTotal + ' ' + afTotal + '%',
+      afTotalStyle: {
+        display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '999px',
+        padding: '3px 11px', fontSize: '12px', fontWeight: 700,
+        background: afValid ? '#e6f6ed' : '#fdebec', color: afValid ? '#2f9e64' : '#b4262b'
+      },
+      afWarn: afValid ? '' : L.afMustBe,
+      afShowBalance: !afValid && afTotal > 0,
+      onAfBalance: () => {
+        const scaled = afIds.map(id => ({ id, v: (+(dlg.pcts || {})[id] || 0) / afTotal * 100 }));
+        const out = {}; let used = 0;
+        scaled.forEach(s => { out[s.id] = Math.floor(s.v); used += Math.floor(s.v); });
+        scaled.sort((a, b) => (b.v % 1) - (a.v % 1));
+        for (let i = 0; used < 100 && i < scaled.length; i++) { out[scaled[i].id]++; used++; }
+        set({ pcts: out, preview: null });
+      },
+      afGenDisabled: !afValid || afSlots === 0,
+      afGenStyle: {
+        flex: 1, border: 'none', background: '#eef0f6', borderRadius: '999px', padding: '12px',
+        fontSize: '14px', fontWeight: 700,
+        cursor: (!afValid || afSlots === 0) ? 'not-allowed' : 'pointer',
+        opacity: (!afValid || afSlots === 0) ? 0.45 : 1
+      },
       afEmpty: !!dlg.preview && afRows.length === 0,
       afApplyDisabled: !dlg.preview || afRows.length === 0 || !!st.busy,
-      onAfGen: () => set({ preview: this.autofillCompute(db, dlg.from, dlg.to, dlg.targets || {}, !!dlg.ow) }),
+      onAfGen: () => {
+        if (!afValid || !afSlots) return;
+        set({ preview: this.autofillCompute(db, dlg.from, dlg.to, afCounts, !!dlg.ow) });
+      },
       onAfApply: () => {
         const plan = (dlg.preview || []).filter(p => p.member).map(p => ({
           id: p.date + p.part, date: p.date, part: p.part, time: p.time + ':00', member_id: p.member
