@@ -178,6 +178,22 @@ input::placeholder { color: #a2a5b3; }
             </div>
           </div>
         </sc-if>
+        <sc-if value="{{ hasMyReqs }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99;margin:20px 4px 8px">{{ L.needsYou }}</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ myReqs }}" as="r" hint-placeholder-count="1">
+              <div style="{{ r.cardStyle }}">
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:14px;font-weight:600">{{ r.text }}</div>
+                  <div style="font-size:12px;color:#8a8d99;margin-top:1px">{{ r.sub }}</div>
+                </div>
+                <sc-if value="{{ r.actShow }}"><button type="button" onClick="{{ r.onAct }}" style="border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:8px 15px;font-size:13px;font-weight:700;cursor:pointer">{{ r.actLabel }}</button></sc-if>
+                <sc-if value="{{ r.declineShow }}"><button type="button" onClick="{{ r.onDecline }}" style="border:none;background:#eef0f6;color:#e5484d;border-radius:999px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer">{{ r.declineLabel }}</button></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
         <sc-if value="{{ hasMe }}">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin:20px 4px 8px">
             <span style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99">{{ L.upcoming }}</span>
@@ -789,7 +805,7 @@ class Component extends DCLogic {
       today: 'Today', liveNow: 'Happening now', confirm: 'Confirm', confirmed: 'Confirmed',
       confirmOpens: 'You can confirm {when}, once the reminder goes out', soon: 'shortly',
       coveringFor: 'covering for {n}', handedTo: 'handed to {n}',
-      cancelAsk: 'Withdraw request to {n}', withdraw: 'Withdraw',
+      cancelAsk: 'Withdraw request to {n}', withdraw: 'Withdraw', needsYou: 'Needs your answer',
       alreadyAnswered: 'Too late — that request was just answered.',
       dmOn: 'DM ready', dmOff: 'No DM',
       dmHint: 'No DM means that member has never written to the bot, so personal reminders cannot reach them. They open Telegram, find the bot and send it any message — the app links them within 15 minutes.',
@@ -836,7 +852,7 @@ class Component extends DCLogic {
       today: 'Сегодня', liveNow: 'Идёт сейчас', confirm: 'Подтвердить', confirmed: 'Подтверждено',
       confirmOpens: 'Подтвердить можно {when}, когда придёт напоминание', soon: 'скоро',
       coveringFor: 'вместо {n}', handedTo: 'передано {n}',
-      cancelAsk: 'Отозвать запрос к {n}', withdraw: 'Отозвать',
+      cancelAsk: 'Отозвать запрос к {n}', withdraw: 'Отозвать', needsYou: 'Ждёт вашего ответа',
       alreadyAnswered: 'Слишком поздно — на запрос уже ответили.',
       dmOn: 'ЛС готовы', dmOff: 'Нет ЛС',
       dmHint: '«Нет ЛС» значит, что участник ещё не писал боту, и личные напоминания до него не дойдут. Нужно открыть Телеграм, найти бота и отправить любое сообщение — связка появится в течение 15 минут.',
@@ -1215,7 +1231,8 @@ class Component extends DCLogic {
           onAct: () => this.setState({ dlg: { type: 'cover', slotId: s.id } }),
           // Whoever asked for cover — or the admin — can call it back off.
           declineShow: (!!me && me === r.from) || st.admin,
-          declineLabel: L.withdraw, onDecline: () => this.doCancelReq(s.id)
+          declineLabel: L.withdraw, onDecline: () => this.doCancelReq(s.id),
+          mine: !!me && me === r.from, forMe: false
         });
       } else {
         const target = me === r.to, requester = me === r.from;
@@ -1229,10 +1246,25 @@ class Component extends DCLogic {
           // ask that is going unanswered instead of being stuck waiting.
           declineShow: target || requester || st.admin,
           declineLabel: target ? L.decline : L.withdraw,
-          onDecline: target ? () => this.doDecline(r) : () => this.doCancelReq(s.id)
+          onDecline: target ? () => this.doDecline(r) : () => this.doCancelReq(s.id),
+          mine: target || requester, forMe: target
         });
       }
     });
+
+    // Requests that concern me personally, repeated on My turns — the ask
+    // DM lands there, so the answer has to be reachable without hunting
+    // for the Schedule tab. Outlined when it is my decision, plain when I
+    // am the one waiting on a reply.
+    const myReqs = me ? openReqs.filter(r => r.mine).map(r => Object.assign({}, r, {
+      cardStyle: {
+        display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px',
+        borderRadius: '16px', background: '#fff',
+        boxShadow: r.forMe
+          ? 'inset 0 0 0 1.5px #b7cbfb, 0 1px 3px rgba(23,24,28,0.06)'
+          : '0 1px 3px rgba(23,24,28,0.06)'
+      }
+    })) : [];
 
     // year picker
     const years = Array.from(new Set(list.map(s => s.date.slice(0, 4)))).sort();
@@ -1506,6 +1538,11 @@ class Component extends DCLogic {
       tabs,
       vSched: st.view === 'sched', vMine: st.view === 'mine', vStats: st.view === 'stats', vAdmin: st.view === 'admin',
       hero, openReqs,
+      // The ask DM lands the person on My turns, so anything waiting on
+      // them has to be actionable HERE — not only on the Schedule tab.
+      // Highlighted when it is their decision, plain when they are just
+      // waiting on someone else's reply.
+      myReqs, hasMyReqs: myReqs.length > 0,
       pastLabel: st.showPast ? L.hidePast : L.showPast,
       togglePast: () => this.setState(s => ({ showPast: !s.showPast, monthLimit: this.PAGE })),
       yearPills, hasYears: yearPills.length > 0,
