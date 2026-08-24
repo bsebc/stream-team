@@ -216,6 +216,9 @@ input::placeholder { color: #a2a5b3; }
               </button>
             </sc-for>
           </div>
+          <sc-if value="{{ moreMineLabel }}" hint-placeholder-val="{{ false }}">
+            <button type="button" onClick="{{ onMoreMine }}" style="width:100%;margin-top:10px;border:none;background:#fff;box-shadow:0 1px 3px rgba(23,24,28,0.06);border-radius:16px;padding:13px;font-size:13.5px;font-weight:700;color:#3b6ef6;cursor:pointer">{{ moreMineLabel }}</button>
+          </sc-if>
           <sc-if value="{{ noUpcoming }}">
             <div style="background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(23,24,28,0.06);padding:20px;text-align:center">
               <p style="margin:0 0 12px;font-size:13.5px;color:#8a8d99">{{ L.noUpcoming }}</p>
@@ -593,10 +596,11 @@ class Component extends DCLogic {
     view: 'mine', admin: false, pin: '',
     dlg: null, toast: '', showPast: false, isDesktop: false,
     loginPin: '', loginErr: '', tick: 0,
-    year: '', monthLimit: 6, remDraft: null,
+    year: '', monthLimit: 6, mineLimit: 8, remDraft: null,
     statsYear: '', openStat: '', warnDraft: null
   };
   PAGE = 6;
+  MINE_PAGE = 8;
 
   pref(k, d) { try { return localStorage.getItem('streamteam_' + k) ?? d; } catch (e) { return d; } }
   setPref(k, v) { try { localStorage.setItem('streamteam_' + k, v); } catch (e) {} }
@@ -820,7 +824,7 @@ class Component extends DCLogic {
       nUnconfirmed: 'Not confirmed, close to start', warnHours: 'Last-call warning, hours before',
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
       showPast: 'Show past', hidePast: 'Hide past', special: 'Special', open: 'Open', waiting: 'Waiting', live: 'LIVE',
-      showMore: 'Show {n} more months',
+      showMore: 'Show {n} more months', showMoreTurns: 'Show {n} more',
       emptyPast: 'Nothing upcoming in {y}. Turn on Show past to see it.',
       emptyYear: 'Nothing scheduled in {y} yet. Use Auto-fill in Admin to plan it.',
       addCalendar: 'Subscribe in calendar', upcoming: 'Upcoming', noUpcoming: 'No upcoming turns.', thisYear: 'done this year',
@@ -868,7 +872,7 @@ class Component extends DCLogic {
       nUnconfirmed: 'Не подтверждено перед началом', warnHours: 'Предупреждение, часов до',
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
-      showMore: 'Показать ещё {n} мес.',
+      showMore: 'Показать ещё {n} мес.', showMoreTurns: 'Показать ещё {n}',
       emptyPast: 'В {y} предстоящих служб нет. Включите «Показать прошедшие».',
       emptyYear: 'На {y} пока ничего не запланировано. Используйте автозаполнение в разделе «Админ».',
       addCalendar: 'Подписаться в календаре', upcoming: 'Предстоящие', noUpcoming: 'Предстоящих смен нет.', thisYear: 'сделано в этом году',
@@ -1478,7 +1482,9 @@ class Component extends DCLogic {
     const whoOpts = db.members.filter(m => m.active).map((m, i) => ({
       key: m.id, label: this.nameOf(db, m.id, lang), initial: m.name[0],
       avStyle: this.av(db, m.id, 32), checked: me === m.id, style: optRow(i),
-      onPick: () => { this.setPref('me', m.id); this.setState({ me: m.id, dlg: null }); }
+      // mineLimit resets so a different person's list starts at the top
+      // page rather than inheriting however far the last one scrolled.
+      onPick: () => { this.setPref('me', m.id); this.setState({ me: m.id, dlg: null, mineLimit: this.MINE_PAGE }); }
     }));
 
     const assignOpts = dlgSlot ? db.members.filter(m => m.active).map((m, i) => ({
@@ -1563,7 +1569,17 @@ class Component extends DCLogic {
         ? L.showMore.replace('{n}', Math.min(this.PAGE, months.length - st.monthLimit))
         : '',
       onMore: () => this.setState(s => ({ monthLimit: s.monthLimit + this.PAGE })),
-      heroMine, myRows, noUpcoming: !!meM && myFuture.length === 0,
+      heroMine,
+      // Two years of schedule makes this list long, so it pages like the
+      // full schedule does. The row separator is drawn off the sliced
+      // index, so the first visible row never carries a stray top border.
+      myRows: myRows.slice(0, st.mineLimit).map((r, i) =>
+        Object.assign({}, r, { style: Object.assign({}, r.style, { borderTop: i ? '1px solid #eef0f4' : 'none' }) })),
+      moreMineLabel: myRows.length > st.mineLimit
+        ? L.showMoreTurns.replace('{n}', Math.min(this.MINE_PAGE, myRows.length - st.mineLimit))
+        : '',
+      onMoreMine: () => this.setState(s => ({ mineLimit: s.mineLimit + this.MINE_PAGE })),
+      noUpcoming: !!meM && myFuture.length === 0,
       doneLine: meM ? myDone + ' ' + L.thisYear : '',
       icsHref: meM ? this.icsFor(db, me) : '',
       statRows, statsTitle: L.season + ' ' + sYear, statYearPills, hasStatYears: statYearPills.length > 0,
