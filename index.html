@@ -282,10 +282,12 @@ input::placeholder { color: #a2a5b3; }
                   <span style="display:block;font-size:14.5px;font-weight:600">{{ am.name }}</span>
                   <span style="display:block;font-size:12px;color:#8a8d99">{{ am.sub }}</span>
                 </span>
+                <span style="{{ am.dmStyle }}">{{ am.dmText }}</span>
                 <button type="button" onClick="{{ am.onEdit }}" style="border:none;background:#eef0f6;border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;cursor:pointer">{{ L.edit }}</button>
               </div>
             </sc-for>
           </div>
+          <p style="margin:8px 6px 0;font-size:11.5px;color:#a2a5b3;text-wrap:pretty">{{ L.dmHint }}</p>
 
           <div style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99;margin:20px 4px 8px">{{ L.telegram }}</div>
           <div style="background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(23,24,28,0.06);padding:15px;display:flex;flex-direction:column;gap:13px">
@@ -408,7 +410,7 @@ input::placeholder { color: #a2a5b3; }
           <sc-if value="{{ myLocked }}"><div style="display:flex;align-items:center;justify-content:center;gap:7px;background:#eef0f6;color:#8a8d99;border-radius:14px;padding:12px;font-size:12.5px;font-weight:600;text-align:center;text-wrap:pretty">{{ ic.clock }}{{ myLocked }}</div></sc-if>
           <sc-if value="{{ myConfirmed }}"><div style="display:flex;align-items:center;justify-content:center;gap:7px;background:#e6f6ed;color:#2f9e64;border-radius:999px;padding:12px;font-size:14px;font-weight:700">{{ ic.check }}{{ L.confirmed }}</div></sc-if>
           <sc-if value="{{ myNotOpen }}"><button type="button" onClick="{{ onMyOpen }}" style="display:flex;align-items:center;justify-content:center;gap:7px;border:none;background:#fdebec;color:#e5484d;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ ic.swap }}{{ L.requestCover }}</button></sc-if>
-          <sc-if value="{{ myOpenReq }}"><button type="button" onClick="{{ onMyCancel }}" style="border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.cancelReq }}</button></sc-if>
+          <sc-if value="{{ myOpenReq }}"><button type="button" onClick="{{ onMyCancel }}" style="border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ cancelLabel }}</button></sc-if>
           <sc-if value="{{ myNotOpen }}">
             <div style="display:flex;gap:8px;align-items:center;border-top:1px solid #eef0f4;padding-top:13px;margin-top:3px">
               <select value="{{ swapTo }}" onChange="{{ onSwapTo }}" style="flex:1;border:none;background:#eef0f6;border-radius:12px;padding:10px 12px;font-size:14px">
@@ -644,7 +646,10 @@ class Component extends DCLogic {
 
       const members = (m.data || []).map(x => ({
         id: x.id, name: x.name, ru: x.name_ru || '', tg: x.telegram || '',
-        pct: x.share_pct ?? 0, active: x.active !== false
+        pct: x.share_pct ?? 0, active: x.active !== false,
+        // No chat_id means Telegram has never seen them write to the bot,
+        // so they cannot receive any direct message.
+        linked: !!x.chat_id
       })).sort((a, b) => b.pct - a.pct || a.name.localeCompare(b.name));
 
       const slots = {};
@@ -784,6 +789,10 @@ class Component extends DCLogic {
       today: 'Today', liveNow: 'Happening now', confirm: 'Confirm', confirmed: 'Confirmed',
       confirmOpens: 'You can confirm {when}, once the reminder goes out', soon: 'shortly',
       coveringFor: 'covering for {n}', handedTo: 'handed to {n}',
+      cancelAsk: 'Withdraw request to {n}', withdraw: 'Withdraw',
+      alreadyAnswered: 'Too late — that request was just answered.',
+      dmOn: 'DM ready', dmOff: 'No DM',
+      dmHint: 'No DM means that member has never written to the bot, so personal reminders cannot reach them. They open Telegram, find the bot and send it any message — the app links them within 15 minutes.',
       dHandedOff: 'Turns handed off', dCovered: 'Covered for others',
       confirmRule: 'Confirm unlocks when the reminder goes out. If a turn is still unconfirmed inside the warning window, the group is told once.',
       nUnconfirmed: 'Not confirmed, close to start', warnHours: 'Last-call warning, hours before',
@@ -827,6 +836,10 @@ class Component extends DCLogic {
       today: 'Сегодня', liveNow: 'Идёт сейчас', confirm: 'Подтвердить', confirmed: 'Подтверждено',
       confirmOpens: 'Подтвердить можно {when}, когда придёт напоминание', soon: 'скоро',
       coveringFor: 'вместо {n}', handedTo: 'передано {n}',
+      cancelAsk: 'Отозвать запрос к {n}', withdraw: 'Отозвать',
+      alreadyAnswered: 'Слишком поздно — на запрос уже ответили.',
+      dmOn: 'ЛС готовы', dmOff: 'Нет ЛС',
+      dmHint: '«Нет ЛС» значит, что участник ещё не писал боту, и личные напоминания до него не дойдут. Нужно открыть Телеграм, найти бота и отправить любое сообщение — связка появится в течение 15 минут.',
       dHandedOff: 'Передал свои смены', dCovered: 'Подменил других',
       confirmRule: 'Подтверждение открывается вместе с напоминанием. Если смена не подтверждена в окне предупреждения, группа получит одно сообщение.',
       nUnconfirmed: 'Не подтверждено перед началом', warnHours: 'Предупреждение, часов до',
@@ -925,18 +938,27 @@ class Component extends DCLogic {
       await this.fn({ event: 'cover_requested', service_id: id, from });
     });
   }
+  // Withdraws whatever is pending on this service: an open call for cover,
+  // or a direct ask that has gone unanswered. A direct ask never set
+  // services.open, so clearing it is a no-op in that case and harmless.
   doCancelReq(id) {
     const req = this.reqFor(this.state.db, id);
     const from = this.state.db.slots[id] ? this.state.db.slots[id].member : '';
+    const askedTo = req && req.type === 'direct' ? req.to : '';
     this.act('cancel', async () => {
       const sb = this.sbq();
       let r = await sb.from('services').update({ open: false }).eq('id', id);
       if (r.error) throw r.error;
       if (req) {
-        r = await sb.from('requests').update({ status: 'cancelled' }).eq('id', req.id);
+        // Only cancel if still pending — if they accepted a second ago, that
+        // write must win rather than being quietly undone.
+        r = await sb.from('requests').update({ status: 'cancelled' })
+          .eq('id', req.id).eq('status', 'pending').select('id');
         if (r.error) throw r.error;
+        if (!r.data || !r.data.length) throw new Error(this.dict(this.state.lang).alreadyAnswered);
       }
-      await this.fn({ event: 'cancelled', service_id: id, from });
+      // A withdrawn private ask is told to that person, not the whole group.
+      await this.fn({ event: 'cancelled', service_id: id, from, to: askedTo || undefined });
     });
   }
   doCover(id) {
@@ -1191,7 +1213,9 @@ class Component extends DCLogic {
           sub: slotTxt + ' · ' + L.firstTaken,
           actShow: !!me && me !== r.from, actLabel: L.cover,
           onAct: () => this.setState({ dlg: { type: 'cover', slotId: s.id } }),
-          declineShow: false
+          // Whoever asked for cover — or the admin — can call it back off.
+          declineShow: (!!me && me === r.from) || st.admin,
+          declineLabel: L.withdraw, onDecline: () => this.doCancelReq(s.id)
         });
       } else {
         const target = me === r.to, requester = me === r.from;
@@ -1201,7 +1225,11 @@ class Component extends DCLogic {
           text: this.nameOf(db, r.from, lang) + ' → ' + this.nameOf(db, r.to, lang),
           sub: slotTxt + ' · ' + L.waitingReply,
           actShow: target, actLabel: L.accept, onAct: () => this.doAccept(r),
-          declineShow: target, declineLabel: L.decline, onDecline: () => this.doDecline(r)
+          // The asked person decides; the asker (or admin) can withdraw an
+          // ask that is going unanswered instead of being stuck waiting.
+          declineShow: target || requester || st.admin,
+          declineLabel: target ? L.decline : L.withdraw,
+          onDecline: target ? () => this.doDecline(r) : () => this.doCancelReq(s.id)
         });
       }
     });
@@ -1386,6 +1414,10 @@ class Component extends DCLogic {
       key: m.id, initial: m.name[0], avStyle: this.av(db, m.id, 32),
       name: m.name + (m.ru ? ' · ' + m.ru : '') + (m.active ? '' : ' — off'),
       sub: m.pct + '% · ' + (m.tg || '—'),
+      // Being in the members table is not enough to receive DMs — Telegram
+      // only gives us a chat_id once the person writes to the bot.
+      dmText: m.linked ? L.dmOn : L.dmOff,
+      dmStyle: m.linked ? this.pill('#e6f6ed', '#2f9e64') : this.pill('#fef3e2', '#92600a'),
       onEdit: () => this.setState({ dlg: { type: 'member', memberId: m.id, mName: m.name, mRu: m.ru, mTg: m.tg, mQuota: m.pct, mActive: m.active } }),
       style: { display: 'flex', alignItems: 'center', gap: '11px', padding: '11px 14px', borderTop: i ? '1px solid #eef0f4' : 'none' }
     }));
@@ -1606,7 +1638,12 @@ class Component extends DCLogic {
         return w.open ? '' : L.confirmOpens.replace('{when}', this.cd(w.opensAt, F) || L.soon);
       })(),
       myNotOpen: !!dlgSlot && !dlgSlot.open && !myReq,
-      myOpenReq: !!dlgSlot && dlgSlot.open,
+      // Open call for cover, or an unanswered direct ask — either way the
+      // person who started it can take it back.
+      myOpenReq: !!dlgSlot && (dlgSlot.open || !!(myReq && myReq.type === 'direct')),
+      cancelLabel: (myReq && myReq.type === 'direct')
+        ? L.cancelAsk.replace('{n}', this.nameOf(db, myReq.to, lang) || '—')
+        : L.cancelReq,
       onMyConfirm: () => this.doConfirm(dlg.slotId),
       onMyOpen: () => this.doOpenReq(dlg.slotId),
       onMyCancel: () => this.doCancelReq(dlg.slotId),
