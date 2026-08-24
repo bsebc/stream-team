@@ -172,6 +172,7 @@ input::placeholder { color: #a2a5b3; }
             <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
               <sc-if value="{{ heroMine.canConfirm }}"><button type="button" onClick="{{ heroMine.onConfirm }}" style="display:inline-flex;align-items:center;gap:6px;border:none;background:#2f9e64;color:#fff;border-radius:999px;padding:10px 17px;font-size:13.5px;font-weight:700;cursor:pointer">{{ ic.check }}{{ L.confirm }}</button></sc-if>
               <sc-if value="{{ heroMine.confirmed }}"><span style="display:inline-flex;align-items:center;gap:6px;background:#e6f6ed;color:#2f9e64;border-radius:999px;padding:10px 15px;font-size:13.5px;font-weight:700">{{ ic.check }}{{ L.confirmed }}</span></sc-if>
+              <sc-if value="{{ heroMine.locked }}"><span style="display:inline-flex;align-items:center;gap:7px;background:#eef0f6;color:#8a8d99;border-radius:999px;padding:10px 15px;font-size:12.5px;font-weight:600">{{ ic.clock }}{{ heroMine.locked }}</span></sc-if>
               <button type="button" onClick="{{ heroMine.onReplace }}" style="display:inline-flex;align-items:center;gap:6px;border:none;background:#eef0f6;color:#17181c;border-radius:999px;padding:10px 17px;font-size:13.5px;font-weight:700;cursor:pointer">{{ ic.swap }}{{ L.requestCover }}</button>
             </div>
           </div>
@@ -296,6 +297,11 @@ input::placeholder { color: #a2a5b3; }
               <span style="flex:1;font-size:13.5px">{{ L.remBefore }}</span>
               <input type="number" min="1" max="72" value="{{ sRem }}" onChange="{{ onSRem }}" onBlur="{{ onSRemCommit }}" style="width:64px;border:none;background:#eef0f6;border-radius:10px;padding:8px 10px;text-align:right;font-size:14px">
             </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="flex:1;font-size:13.5px">{{ L.warnHours }}</span>
+              <input type="number" min="1" max="24" value="{{ sWarn }}" onChange="{{ onSWarn }}" onBlur="{{ onSWarnCommit }}" style="width:64px;border:none;background:#eef0f6;border-radius:10px;padding:8px 10px;text-align:right;font-size:14px">
+            </div>
+            <p style="margin:0;font-size:11.5px;color:#a2a5b3;text-wrap:pretty">{{ L.confirmRule }}</p>
             <div style="border-top:1px solid #eef0f4;padding-top:12px">
               <div style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#a2a5b3">{{ L.nWhat }}</div>
               <div style="font-size:11.5px;color:#a2a5b3;margin-top:7px;margin-bottom:2px">{{ L.nGroup }}</div>
@@ -398,6 +404,7 @@ input::placeholder { color: #a2a5b3; }
         <div style="font-size:13px;color:#8a8d99;margin-top:2px">{{ mySub }}</div>
         <div style="display:flex;flex-direction:column;gap:9px;margin-top:14px">
           <sc-if value="{{ myCanConfirm }}"><button type="button" onClick="{{ onMyConfirm }}" style="display:flex;align-items:center;justify-content:center;gap:7px;border:none;background:#2f9e64;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ ic.check }}{{ L.confirm }}</button></sc-if>
+          <sc-if value="{{ myLocked }}"><div style="display:flex;align-items:center;justify-content:center;gap:7px;background:#eef0f6;color:#8a8d99;border-radius:14px;padding:12px;font-size:12.5px;font-weight:600;text-align:center;text-wrap:pretty">{{ ic.clock }}{{ myLocked }}</div></sc-if>
           <sc-if value="{{ myConfirmed }}"><div style="display:flex;align-items:center;justify-content:center;gap:7px;background:#e6f6ed;color:#2f9e64;border-radius:999px;padding:12px;font-size:14px;font-weight:700">{{ ic.check }}{{ L.confirmed }}</div></sc-if>
           <sc-if value="{{ myNotOpen }}"><button type="button" onClick="{{ onMyOpen }}" style="display:flex;align-items:center;justify-content:center;gap:7px;border:none;background:#fdebec;color:#e5484d;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ ic.swap }}{{ L.requestCover }}</button></sc-if>
           <sc-if value="{{ myOpenReq }}"><button type="button" onClick="{{ onMyCancel }}" style="border:none;background:#eef0f6;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ L.cancelReq }}</button></sc-if>
@@ -562,7 +569,7 @@ class Component extends DCLogic {
     dlg: null, toast: '', showPast: false, isDesktop: false,
     loginPin: '', loginErr: '', tick: 0,
     year: '', monthLimit: 6, remDraft: null,
-    statsYear: '', openStat: ''
+    statsYear: '', openStat: '', warnDraft: null
   };
   PAGE = 6;
 
@@ -722,11 +729,25 @@ class Component extends DCLogic {
   }
   reqFor(db, slotId) { return Object.values(db.requests).find(r => r.slotId === slotId && r.status === 'pending') || null; }
 
+  // Confirming days ahead is worthless — people forget by Sunday. The
+  // button only opens once the reminder has gone out, i.e. inside the
+  // same window the bot uses (rem_hours before the service).
+  confirmWindow(db, s) {
+    if (!s) return { open: false, opensAt: null };
+    const h = +(db.settings.rem_hours || 24);
+    const start = this.dtOf(s);
+    const opensAt = new Date(start.getTime() - h * 3600000);
+    return { open: this.now() >= opensAt, opensAt, start };
+  }
+
   dict(lang) {
     const en = {
       tabSched: 'Schedule', tabMine: 'My turns', tabStats: 'Stats', tabAdmin: 'Admin',
       nextService: 'Next service', yourNext: 'Your next turn', morning: 'Morning', evening: 'Evening',
       today: 'Today', liveNow: 'Happening now', confirm: 'Confirm', confirmed: 'Confirmed',
+      confirmOpens: 'You can confirm {when}, once the reminder goes out', soon: 'shortly',
+      confirmRule: 'Confirm unlocks when the reminder goes out. If a turn is still unconfirmed inside the warning window, the group is told once.',
+      nUnconfirmed: 'Not confirmed, close to start', warnHours: 'Last-call warning, hours before',
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
       showPast: 'Show past', hidePast: 'Hide past', special: 'Special', open: 'Open', waiting: 'Waiting', live: 'LIVE',
       showMore: 'Show {n} more months',
@@ -765,6 +786,9 @@ class Component extends DCLogic {
       tabSched: 'Расписание', tabMine: 'Мои смены', tabStats: 'Статистика', tabAdmin: 'Админ',
       nextService: 'Следующая служба', yourNext: 'Ваша следующая смена', morning: 'Утренняя', evening: 'Вечерняя',
       today: 'Сегодня', liveNow: 'Идёт сейчас', confirm: 'Подтвердить', confirmed: 'Подтверждено',
+      confirmOpens: 'Подтвердить можно {when}, когда придёт напоминание', soon: 'скоро',
+      confirmRule: 'Подтверждение открывается вместе с напоминанием. Если смена не подтверждена в окне предупреждения, группа получит одно сообщение.',
+      nUnconfirmed: 'Не подтверждено перед началом', warnHours: 'Предупреждение, часов до',
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
       showMore: 'Показать ещё {n} мес.',
@@ -886,7 +910,7 @@ class Component extends DCLogic {
       // second one's WHERE matches nothing and they are told it is taken,
       // instead of both writing and both being announced to the group.
       let r = await sb.from('services')
-        .update({ member_id: me, open: false, confirmed: false, notified: false })
+        .update({ member_id: me, open: false, confirmed: false, notified: false, warned: false })
         .eq('id', id)
         .or('open.eq.true,member_id.is.null')
         .select('id');
@@ -913,7 +937,7 @@ class Component extends DCLogic {
     this.act('accept', async () => {
       const sb = this.sbq();
       let r = await sb.from('services')
-        .update({ member_id: req.to, open: false, confirmed: false, notified: false })
+        .update({ member_id: req.to, open: false, confirmed: false, notified: false, warned: false })
         .eq('id', req.slotId);
       if (r.error) throw r.error;
       r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
@@ -1029,7 +1053,8 @@ class Component extends DCLogic {
       download: [e('path', { key: 1, d: 'M12 15V3' }), e('path', { key: 2, d: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4' }), e('path', { key: 3, d: 'm7 10 5 5 5-5' })],
       swap: [e('path', { key: 1, d: 'm17 2 4 4-4 4' }), e('path', { key: 2, d: 'M3 11v-1a4 4 0 0 1 4-4h14' }), e('path', { key: 3, d: 'm7 22-4-4 4-4' }), e('path', { key: 4, d: 'M21 13v1a4 4 0 0 1-4 4H3' })],
       chev: [e('path', { key: 1, d: 'm9 18 6-6-6-6' })],
-      lock: [e('rect', { key: 1, x: 3, y: 11, width: 18, height: 11, rx: 2 }), e('path', { key: 2, d: 'M7 11V7a5 5 0 0 1 10 0v4' })]
+      lock: [e('rect', { key: 1, x: 3, y: 11, width: 18, height: 11, rx: 2 }), e('path', { key: 2, d: 'M7 11V7a5 5 0 0 1 10 0v4' })],
+      clock: [e('circle', { key: 1, cx: 12, cy: 12, r: 9 }), e('path', { key: 2, d: 'M12 7v5l3.5 2' })]
     };
     return e('svg', { viewBox: '0 0 24 24', width: size, height: size, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flex: 'none' } }, P[name]);
   }
@@ -1210,7 +1235,11 @@ class Component extends DCLogic {
       heroMine.time = this.t12(myNext.time);
       heroMine.cd = this.cd(this.dtOf(myNext), F);
       heroMine.confirmed = myNext.confirmed;
-      heroMine.canConfirm = !myNext.confirmed;
+      const cw = this.confirmWindow(db, myNext);
+      heroMine.canConfirm = !myNext.confirmed && cw.open;
+      heroMine.locked = !myNext.confirmed && !cw.open
+        ? L.confirmOpens.replace('{when}', this.cd(cw.opensAt, F) || L.soon)
+        : '';
       heroMine.onConfirm = () => this.doConfirm(myNext.id);
       heroMine.onReplace = () => this.setState({ dlg: { type: 'myturn', slotId: myNext.id, swapTo: '' } });
     }
@@ -1372,7 +1401,7 @@ class Component extends DCLogic {
 
     return {
       L,
-      ic: { mark: this.brandMark(21), video: this.icon('video', 17), cal: this.icon('cal', 18), user: this.icon('user', 18), chart: this.icon('chart', 18), gear: this.icon('gear', 18), send: this.icon('send', 16), check: this.icon('check', 13), plus: this.icon('plus', 15), download: this.icon('download', 15), swap: this.icon('swap', 14), chev: this.icon('chev', 16), lock: this.icon('lock', 18) },
+      ic: { mark: this.brandMark(21), video: this.icon('video', 17), cal: this.icon('cal', 18), user: this.icon('user', 18), chart: this.icon('chart', 18), gear: this.icon('gear', 18), send: this.icon('send', 16), check: this.icon('check', 13), plus: this.icon('plus', 15), download: this.icon('download', 15), swap: this.icon('swap', 14), chev: this.icon('chev', 16), lock: this.icon('lock', 18), clock: this.icon('clock', 14) },
       brand: (this.props.churchName ?? 'Stream Team'),
       banner, bannerStyle, bannerRetry, onRetry: () => this.load(),
       langEnStyle: segBtn(lang === 'en'), langRuStyle: segBtn(lang === 'ru'),
@@ -1447,6 +1476,16 @@ class Component extends DCLogic {
       // every keystroke would briefly set rem_hours to "2" while typing "24".
       sRem: st.remDraft === null ? db.settings.rem_hours : st.remDraft,
       onSRem: e => this.setState({ remDraft: e.target.value }),
+      sWarn: st.warnDraft === null ? (db.settings.warn_hours ?? 2) : st.warnDraft,
+      onSWarn: e => this.setState({ warnDraft: e.target.value }),
+      onSWarnCommit: () => {
+        if (st.warnDraft === null) return;
+        const v = Math.max(1, Math.min(24, +st.warnDraft || 2));
+        this.setState({ warnDraft: null });
+        if (v !== (db.settings.warn_hours ?? 2)) {
+          this.act('settings', () => this.fn({ action: 'admin_save_settings', pin: st.pin, warn_hours: v }));
+        }
+      },
       onSRemCommit: () => {
         if (st.remDraft === null) return;
         const v = Math.max(1, Math.min(72, +st.remDraft || 24));
@@ -1461,6 +1500,7 @@ class Component extends DCLogic {
         ['alert_swap', L.nSwap, true],
         ['notify_pickup', L.nPickup, true],
         ['notify_confirm', L.nConfirm, false],
+        ['notify_unconfirmed', L.nUnconfirmed, true],
         ['notify_schedule', L.nSchedule, true]
       ].map(([k, labelTxt, def]) => {
         const on = db.settings[k] ?? def;
@@ -1501,7 +1541,12 @@ class Component extends DCLogic {
       onDeleteSpecial: () => this.act('delete', () => this.fn({ action: 'admin_delete_service', pin: st.pin, id: dlgSlot.id })),
       dMy: D('myturn'), myTitle: sTitle(dlgSlot), mySub: sSub(dlgSlot),
       myConfirmed: !!dlgSlot && dlgSlot.confirmed,
-      myCanConfirm: !!dlgSlot && !dlgSlot.confirmed && !dlgSlot.open,
+      myCanConfirm: !!dlgSlot && !dlgSlot.confirmed && !dlgSlot.open && this.confirmWindow(db, dlgSlot).open,
+      myLocked: (() => {
+        if (!dlgSlot || dlgSlot.confirmed || dlgSlot.open) return '';
+        const w = this.confirmWindow(db, dlgSlot);
+        return w.open ? '' : L.confirmOpens.replace('{when}', this.cd(w.opensAt, F) || L.soon);
+      })(),
       myNotOpen: !!dlgSlot && !dlgSlot.open && !myReq,
       myOpenReq: !!dlgSlot && dlgSlot.open,
       onMyConfirm: () => this.doConfirm(dlg.slotId),
