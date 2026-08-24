@@ -10,6 +10,9 @@
 <helmet>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="favicon-16.png" sizes="16x16" type="image/png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Stream Team">
@@ -20,6 +23,10 @@
 html, body { margin: 0; background: #f2f3f8; color: #17181c; font-family: -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif; -webkit-tap-highlight-color: transparent; -webkit-font-smoothing: antialiased; font-size: 15px; line-height: 1.45; }
 *, *::before, *::after { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; color: inherit; }
+/* iOS Safari zooms the whole page when a focused field is under 16px.
+   Every field in this app is smaller than that by design, so force the
+   floor here and let the 16px only apply to the text the user types. */
+input, select, textarea { font-size: 16px !important; -webkit-text-size-adjust: 100%; }
 a { color: #3b6ef6; text-decoration: none; }
 a:hover { color: #2f56c4; }
 :focus { outline: none; }
@@ -35,7 +42,7 @@ input::placeholder { color: #a2a5b3; }
   <header style="position:sticky;top:0;z-index:40;background:rgba(242,243,248,0.82);backdrop-filter:blur(16px)">
     <div style="max-width:760px;margin:0 auto;display:flex;align-items:center;gap:10px;padding:10px 16px">
       <div style="display:flex;align-items:center;gap:9px;margin-right:auto">
-        <span style="width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,#4f7df9,#7a5cf0);display:grid;place-items:center;color:#fff">{{ ic.video }}</span>
+        <span style="width:31px;height:31px;flex:none;border-radius:9px;background:linear-gradient(135deg,#4f7df9,#7a5cf0);display:grid;place-items:center;color:#fff">{{ ic.mark }}</span>
         <span style="font-size:17px;font-weight:700;letter-spacing:-0.01em">{{ brand }}</span>
       </div>
       <div style="display:flex;background:#e6e8f0;border-radius:999px;padding:3px">
@@ -199,20 +206,35 @@ input::placeholder { color: #a2a5b3; }
 
     <sc-if value="{{ vStats }}" hint-placeholder-val="{{ false }}">
       <section data-screen-label="Stats">
-        <div style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99;margin:20px 4px 8px">{{ statsTitle }}</div>
+        <sc-if value="{{ hasStatYears }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+            <sc-for list="{{ statYearPills }}" as="y" hint-placeholder-count="2">
+              <button type="button" onClick="{{ y.onTap }}" style="{{ y.style }}">{{ y.label }}</button>
+            </sc-for>
+          </div>
+        </sc-if>
+        <div style="font-size:12.5px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#8a8d99;margin:18px 4px 8px">{{ statsTitle }}</div>
         <div style="background:#fff;border-radius:18px;box-shadow:0 1px 3px rgba(23,24,28,0.06);overflow:hidden">
           <sc-for list="{{ statRows }}" as="st" hint-placeholder-count="6">
-            <div style="{{ st.rowStyle }}">
+            <button type="button" onClick="{{ st.onTap }}" style="{{ st.rowStyle }}">
               <span style="{{ st.avStyle }}">{{ st.initial }}</span>
-              <span style="flex:1;min-width:0">
-                <span style="display:flex;align-items:center;gap:8px">
-                  <span style="font-size:15px;font-weight:600;flex:1">{{ st.name }}</span>
-                  <span style="font-size:12px;color:#8a8d99">{{ st.counts }}</span>
-                  <span style="background:#e8edfd;color:#2f56c4;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700">{{ st.plan }}</span>
-                </span>
-                <span style="display:block;height:4px;border-radius:999px;background:#eef0f6;margin-top:7px"><span style="{{ st.barStyle }}"></span></span>
+              <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:15px;font-weight:600">{{ st.name }}</span>
+                <span style="font-size:12px;color:#8a8d99">{{ st.summary }}</span>
               </span>
-            </div>
+              <span style="{{ st.balanceStyle }}">{{ st.balance }}</span>
+              <span style="{{ st.chevStyle }}">{{ ic.chev }}</span>
+            </button>
+            <sc-if value="{{ st.open }}" hint-placeholder-val="{{ false }}">
+              <div style="background:#f7f8fc;padding:4px 14px 12px 59px;display:flex;flex-direction:column">
+                <sc-for list="{{ st.detail }}" as="d" hint-placeholder-count="7">
+                  <div style="display:flex;align-items:baseline;gap:10px;padding:5px 0;border-top:1px solid #eceef5">
+                    <span style="flex:1;font-size:12.5px;color:#8a8d99">{{ d.k }}</span>
+                    <span style="font-size:13px;font-weight:600;text-align:right">{{ d.v }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
           </sc-for>
         </div>
         <p style="margin:10px 6px;font-size:11.5px;color:#a2a5b3">{{ L.statsNote }}</p>
@@ -498,6 +520,9 @@ input::placeholder { color: #a2a5b3; }
           </div>
           <div style="font-size:12.5px;color:#2f56c4;font-weight:600;margin-top:8px">{{ afSummary }}</div>
         </sc-if>
+        <sc-if value="{{ afErr }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fdebec;border-radius:12px;padding:10px 13px;margin-top:12px;font-size:12.5px;color:#b4262b;font-weight:600;text-wrap:pretty">{{ afErr }}</div>
+        </sc-if>
         <div style="display:flex;gap:8px;margin-top:15px">
           <button type="button" onClick="{{ onAfGen }}" disabled="{{ afGenDisabled }}" style="{{ afGenStyle }}">{{ L.generate }}</button>
           <button type="button" onClick="{{ onAfApply }}" disabled="{{ afApplyDisabled }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ applyLabel }}</button>
@@ -536,7 +561,8 @@ class Component extends DCLogic {
     view: 'sched', admin: false, pin: '',
     dlg: null, toast: '', showPast: false, isDesktop: false,
     loginPin: '', loginErr: '', tick: 0,
-    year: '', monthLimit: 6, remDraft: null
+    year: '', monthLimit: 6, remDraft: null,
+    statsYear: '', openStat: ''
   };
   PAGE = 6;
 
@@ -707,7 +733,12 @@ class Component extends DCLogic {
       emptyPast: 'Nothing upcoming in {y}. Turn on Show past to see it.',
       emptyYear: 'Nothing scheduled in {y} yet. Use Auto-fill in Admin to plan it.',
       addCalendar: 'Subscribe in calendar', upcoming: 'Upcoming', noUpcoming: 'No upcoming turns.', thisYear: 'done this year',
-      season: 'Season', done: 'done', ahead: 'ahead', statsNote: 'Plan = target share of the year\u2019s services. Bar shows assigned vs plan.',
+      season: 'Season', done: 'done', ahead: 'ahead',
+      statsNote: 'Tap a name for the detail. Actual % is the share of the year they actually hold; planned % is their target.',
+      ofTotal: '{a} of {b} services', onTrack: 'On track', overBy: '+{n}% over', underBy: '{n}% under',
+      dDone: 'Served so far', dAhead: 'Still upcoming', dConfirmed: 'Confirmed', dSplit: 'Morning / evening',
+      dNext: 'Next turn', dLast: 'Last served', dShare: 'Share of the year',
+      actual: 'actual', planned: 'planned', noTarget: 'No target set',
       members: 'Members', addMember: 'Add', edit: 'Edit',
       autofill: 'Auto-fill', autofillSub: 'Spread services by each member\u2019s share', afSub: 'Assigns Sunday morning + evening services across the range.',
       afTargets: 'Share of services', afTotal: 'Total', afMustBe: 'must add up to 100%', afBalance: 'Balance to 100%',
@@ -740,7 +771,12 @@ class Component extends DCLogic {
       emptyPast: 'В {y} предстоящих служб нет. Включите «Показать прошедшие».',
       emptyYear: 'На {y} пока ничего не запланировано. Используйте автозаполнение в разделе «Админ».',
       addCalendar: 'Подписаться в календаре', upcoming: 'Предстоящие', noUpcoming: 'Предстоящих смен нет.', thisYear: 'сделано в этом году',
-      season: 'Сезон', done: 'сделано', ahead: 'впереди', statsNote: 'План — целевая доля всех служб за год. Полоса: назначено против плана.',
+      season: 'Сезон', done: 'сделано', ahead: 'впереди',
+      statsNote: 'Нажмите на имя для подробностей. Факт — реальная доля служб за год, план — целевая.',
+      ofTotal: '{a} из {b} служб', onTrack: 'В норме', overBy: '+{n}% выше', underBy: '{n}% ниже',
+      dDone: 'Отслужено', dAhead: 'Предстоит', dConfirmed: 'Подтверждено', dSplit: 'Утро / вечер',
+      dNext: 'Следующая смена', dLast: 'Последняя смена', dShare: 'Доля за год',
+      actual: 'факт', planned: 'план', noTarget: 'Цель не задана',
       members: 'Участники', addMember: 'Добавить', edit: 'Изменить',
       autofill: 'Автозаполнение', autofillSub: 'Распределить службы по доле каждого', afSub: 'Назначает утренние и вечерние службы в диапазоне.',
       afTargets: 'Доля служб', afTotal: 'Всего', afMustBe: 'должно быть 100%', afBalance: 'Выровнять до 100%',
@@ -998,6 +1034,19 @@ class Component extends DCLogic {
     return e('svg', { viewBox: '0 0 24 24', width: size, height: size, fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { flex: 'none' } }, P[name]);
   }
 
+  // The brand mark: a video camera with a red LIVE dot. Same artwork as the
+  // favicon and the home-screen icon, drawn white so it sits on the tile.
+  brandMark(size) {
+    const e = React.createElement;
+    return e('svg', { viewBox: '0 0 100 100', width: size, height: size, style: { flex: 'none', display: 'block' } }, [
+      e('g', { key: 'a', fill: 'none', stroke: '#fff', strokeWidth: 7, strokeLinejoin: 'round', strokeLinecap: 'round' }, [
+        e('rect', { key: 1, x: 19, y: 34, width: 43, height: 34, rx: 8 }),
+        e('path', { key: 2, d: 'M68 45.5 82.5 37v28l-14.5-8.5z' })
+      ]),
+      e('circle', { key: 'b', cx: 76, cy: 26, r: 8.5, fill: '#ff4d4f' })
+    ]);
+  }
+
   partChip(s, L) {
     if (s.special) return { text: L.special, style: { background: '#f3e8fd', color: '#7c3aed', borderRadius: '999px', padding: '2px 9px', fontSize: '10.5px', fontWeight: 700, whiteSpace: 'nowrap' } };
     if (s.part === 'M') return { text: L.morning, style: { background: '#fef3e2', color: '#92600a', borderRadius: '999px', padding: '2px 9px', fontSize: '10.5px', fontWeight: 700, whiteSpace: 'nowrap' } };
@@ -1181,20 +1230,69 @@ class Component extends DCLogic {
     });
     const myDone = inYear.filter(s => s.member === me && this.dtOf(s) <= now).length;
 
-    // stats — scoped to the selected year, not every year in the table
-    const totalYear = inYear.length || 1;
+    // ---- stats: its own year picker, one expandable row per member ----
+    const sYear = years.indexOf(st.statsYear) >= 0 ? st.statsYear : defYear;
+    const sList = list.filter(s => s.date.slice(0, 4) === sYear);
+    const sTotal = sList.length;
+    const statYearPills = years.length > 1 ? years.map(y => ({
+      key: y, label: y,
+      onTap: () => this.setState({ statsYear: y, openStat: '' }),
+      style: {
+        border: 'none', borderRadius: '999px', padding: '7px 16px',
+        fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
+        background: y === sYear ? '#3b6ef6' : '#fff',
+        color: y === sYear ? '#fff' : '#6d6f7a',
+        boxShadow: y === sYear ? 'none' : '0 1px 3px rgba(23,24,28,0.06)'
+      }
+    })) : [];
+
     const statRows = db.members.map(m => {
-      const done = inYear.filter(s => s.member === m.id && this.dtOf(s) <= now).length;
-      const ahead = inYear.filter(s => s.member === m.id && this.dtOf(s) > now).length;
-      const actual = Math.round((done + ahead) / totalYear * 100);
-      const w = m.pct ? Math.min(100, Math.round(actual / m.pct * 100)) : 0;
+      const mine = sList.filter(s => s.member === m.id);
+      const done = mine.filter(s => this.dtOf(s) <= now);
+      const ahead = mine.filter(s => this.dtOf(s) > now);
+      const mornings = mine.filter(s => s.part === 'M').length;
+      const evenings = mine.filter(s => s.part === 'E').length;
+      const specials = mine.filter(s => !!s.special).length;
+      const confirmed = done.filter(s => s.confirmed).length;
+      const nx = ahead[0];
+      const lastDone = done[done.length - 1];
+      const actual = sTotal ? Math.round(mine.length / sTotal * 100) : 0;
+      const target = m.pct || 0;
+      // Fair share is a comparison, so say it in words rather than drawing a
+      // bar whose 100% meant something different from the % beside it.
+      const diff = actual - target;
+      const balance = !target ? '—'
+        : Math.abs(diff) <= 1 ? L.onTrack
+        : diff > 0 ? L.overBy.replace('{n}', diff) : L.underBy.replace('{n}', -diff);
+      const open = st.openStat === m.id;
       return {
         key: m.id, initial: m.name[0], name: this.nameOf(db, m.id, lang),
-        counts: done + ' ' + L.done + ' · ' + ahead + ' ' + L.ahead,
-        plan: m.pct + '%', avStyle: this.av(db, m.id, 32),
-        barStyle: { display: 'block', height: '4px', borderRadius: '999px', width: w + '%', background: 'linear-gradient(90deg,#4f7df9,#7a5cf0)' }
+        avStyle: this.av(db, m.id, 34),
+        total: mine.length, summary: L.ofTotal.replace('{a}', mine.length).replace('{b}', sTotal),
+        pctLine: target ? (actual + '% / ' + target + '%') : (actual + '%'),
+        balance,
+        balanceStyle: {
+          background: !target || Math.abs(diff) <= 1 ? '#e6f6ed' : (diff > 0 ? '#fef3e2' : '#e8edfd'),
+          color: !target || Math.abs(diff) <= 1 ? '#2f9e64' : (diff > 0 ? '#92600a' : '#2f56c4'),
+          borderRadius: '999px', padding: '3px 10px', fontSize: '11.5px', fontWeight: 700, whiteSpace: 'nowrap'
+        },
+        open, chevStyle: { color: '#c6c9d4', display: 'inline-flex', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .18s' },
+        onTap: () => this.setState({ openStat: open ? '' : m.id }),
+        detail: [
+          { key: 'd1', k: L.dDone, v: String(done.length) },
+          { key: 'd2', k: L.dAhead, v: String(ahead.length) },
+          { key: 'd3', k: L.dConfirmed, v: confirmed + ' / ' + done.length },
+          { key: 'd4', k: L.dSplit, v: mornings + ' M · ' + evenings + ' E' + (specials ? ' · ' + specials + ' ' + L.special.toLowerCase() : '') },
+          { key: 'd5', k: L.dNext, v: nx ? (F.mon[new Date(nx.date + 'T12:00').getMonth()] + ' ' + new Date(nx.date + 'T12:00').getDate() + ' · ' + this.t12(nx.time)) : '—' },
+          { key: 'd6', k: L.dLast, v: lastDone ? (F.mon[new Date(lastDone.date + 'T12:00').getMonth()] + ' ' + new Date(lastDone.date + 'T12:00').getDate()) : '—' },
+          { key: 'd7', k: L.dShare, v: target ? (actual + '% ' + L.actual + ' · ' + target + '% ' + L.planned) : L.noTarget }
+        ],
+        _n: mine.length
       };
-    }).map((r, i) => { r.rowStyle = { display: 'flex', alignItems: 'center', gap: '11px', padding: '12px 14px', borderTop: i ? '1px solid #eef0f4' : 'none' }; return r; });
+    }).sort((a, b) => b._n - a._n).map((r, i) => {
+      r.rowStyle = { display: 'flex', alignItems: 'center', gap: '11px', padding: '12px 14px', width: '100%', border: 'none', background: r.open ? '#f7f8fc' : 'none', cursor: 'pointer', borderTop: i ? '1px solid #eef0f4' : 'none', textAlign: 'left' };
+      return r;
+    });
 
     // admin
     const admMembers = db.members.map((m, i) => ({
@@ -1274,7 +1372,7 @@ class Component extends DCLogic {
 
     return {
       L,
-      ic: { video: this.icon('video', 17), cal: this.icon('cal', 18), user: this.icon('user', 18), chart: this.icon('chart', 18), gear: this.icon('gear', 18), send: this.icon('send', 16), check: this.icon('check', 13), plus: this.icon('plus', 15), download: this.icon('download', 15), swap: this.icon('swap', 14), chev: this.icon('chev', 16), lock: this.icon('lock', 18) },
+      ic: { mark: this.brandMark(21), video: this.icon('video', 17), cal: this.icon('cal', 18), user: this.icon('user', 18), chart: this.icon('chart', 18), gear: this.icon('gear', 18), send: this.icon('send', 16), check: this.icon('check', 13), plus: this.icon('plus', 15), download: this.icon('download', 15), swap: this.icon('swap', 14), chev: this.icon('chev', 16), lock: this.icon('lock', 18) },
       brand: (this.props.churchName ?? 'Stream Team'),
       banner, bannerStyle, bannerRetry, onRetry: () => this.load(),
       langEnStyle: segBtn(lang === 'en'), langRuStyle: segBtn(lang === 'ru'),
@@ -1303,7 +1401,7 @@ class Component extends DCLogic {
       heroMine, myRows, noUpcoming: !!meM && myFuture.length === 0,
       doneLine: meM ? myDone + ' ' + L.thisYear : '',
       icsHref: meM ? this.icsFor(db, me) : '',
-      statRows, statsTitle: L.season + ' ' + year,
+      statRows, statsTitle: L.season + ' ' + sYear, statYearPills, hasStatYears: statYearPills.length > 0,
       authed: st.admin, notAuthed: !st.admin,
       loginPin: st.loginPin, loginErr: st.loginErr,
       signinLabel: busyL(L.signin, 'login'),
@@ -1489,12 +1587,39 @@ class Component extends DCLogic {
         if (!afValid || !afSlots) return;
         set({ preview: this.autofillCompute(db, dlg.from, dlg.to, afCounts, !!dlg.ow) });
       },
-      onAfApply: () => {
+      afErr: dlg.afErr || '',
+      onAfApply: async () => {
         const plan = (dlg.preview || []).filter(p => p.member).map(p => ({
           id: p.date + p.part, date: p.date, part: p.part, time: p.time + ':00', member_id: p.member
         }));
         if (!plan.length) return;
-        this.act('autofill', () => this.fn({ action: 'admin_apply_plan', pin: st.pin, plan }));
+        // A whole year is 100+ rows. Send it in batches so one oversized
+        // request can't fail the lot, and keep the dialog open until it
+        // lands — closing it on failure is what made this look like a no-op.
+        this.setState({ busy: 'autofill', dlg: Object.assign({}, this.state.dlg, { afErr: '' }) });
+        const CHUNK = 40;
+        try {
+          let done = 0;
+          for (let i = 0; i < plan.length; i += CHUNK) {
+            const part = plan.slice(i, i + CHUNK);
+            await this.fn({
+              action: 'admin_apply_plan', pin: st.pin, plan: part,
+              silent: i + CHUNK < plan.length,   // announce once, at the end
+              total: plan.length
+            });
+            done += part.length;
+            this.setState({ busy: 'autofill ' + done + '/' + plan.length });
+          }
+          await this.load(true);
+          this.setState({ dlg: null });
+          this.flash('✓ ' + plan.length);
+        } catch (e) {
+          console.error(e);
+          this.setState({
+            busy: '',
+            dlg: Object.assign({}, this.state.dlg, { afErr: (e && e.message) || 'failed' })
+          });
+        }
       },
       dPin: D('pin'), pinNew: dlg.pinNew || '', onPinNew: fld('pinNew'),
       onPinSave: () => {
