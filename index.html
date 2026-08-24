@@ -525,7 +525,7 @@ input::placeholder { color: #a2a5b3; }
         </sc-if>
         <div style="display:flex;gap:8px;margin-top:15px">
           <button type="button" onClick="{{ onAfGen }}" disabled="{{ afGenDisabled }}" style="{{ afGenStyle }}">{{ L.generate }}</button>
-          <button type="button" onClick="{{ onAfApply }}" disabled="{{ afApplyDisabled }}" style="flex:1;border:none;background:#3b6ef6;color:#fff;border-radius:999px;padding:12px;font-size:14px;font-weight:700;cursor:pointer">{{ applyLabel }}</button>
+          <button type="button" onClick="{{ onAfApply }}" disabled="{{ afApplyDisabled }}" style="{{ afApplyStyle }}">{{ afApplyLabel }}</button>
         </div>
       </div>
     </div>
@@ -752,7 +752,7 @@ class Component extends DCLogic {
       sendTest: 'Send test message', queued: 'Next reminders',
       signin: 'Sign in', pin: 'Admin PIN', pinHint: 'The PIN is checked on the server, not in this page.', wrongPin: 'Wrong PIN', changePin: 'Change PIN', newPin: 'New PIN', logout: 'Log out',
       whoTitle: 'Who are you?', whoSub: 'Saved on this device only.', viewer: 'Just viewing', pickName: 'Pick my name', mineEmpty: 'Pick your name once and this tab will show your turns, reminders and requests.',
-      save: 'Save', saving: 'Saving…', cancel: 'Cancel', delete: 'Delete', apply: 'Apply', generate: 'Preview', from: 'From', to: 'To', retry: 'Retry',
+      save: 'Save', saving: 'Saving…', cancel: 'Cancel', delete: 'Delete', apply: 'Apply', applyN: 'Apply {n}', applying: 'Applying', generate: 'Preview', from: 'From', to: 'To', retry: 'Retry',
       date: 'Date', time: 'Time', label: 'Name of service', name: 'Name', nameRu: 'Name (Russian)', tgUser: 'Telegram @', shareLabel: 'Share of services, %', activeM: 'Active',
       overwrite: 'Overwrite already assigned', nothingFill: 'Nothing to fill in this range — extend it or allow overwrite.', assign: 'Operator', leaveOpen: 'Leave open — ask the group', deleteService: 'Delete this service',
       ask: 'Ask', askHint: 'Sends them a direct request instead of opening it to everyone.',
@@ -790,7 +790,7 @@ class Component extends DCLogic {
       sendTest: 'Тестовое сообщение', queued: 'Ближайшие напоминания',
       signin: 'Войти', pin: 'PIN администратора', pinHint: 'PIN проверяется на сервере, а не в этой странице.', wrongPin: 'Неверный PIN', changePin: 'Сменить PIN', newPin: 'Новый PIN', logout: 'Выйти',
       whoTitle: 'Кто вы?', whoSub: 'Сохраняется только на этом устройстве.', viewer: 'Просто смотрю', pickName: 'Выбрать имя', mineEmpty: 'Выберите имя один раз — здесь появятся ваши смены, напоминания и запросы.',
-      save: 'Сохранить', saving: 'Сохранение…', cancel: 'Отмена', delete: 'Удалить', apply: 'Применить', generate: 'Предпросмотр', from: 'С', to: 'По', retry: 'Повторить',
+      save: 'Сохранить', saving: 'Сохранение…', cancel: 'Отмена', delete: 'Удалить', apply: 'Применить', applyN: 'Применить {n}', applying: 'Применяем', generate: 'Предпросмотр', from: 'С', to: 'По', retry: 'Повторить',
       date: 'Дата', time: 'Время', label: 'Название службы', name: 'Имя', nameRu: 'Имя (по-русски)', tgUser: 'Телеграм @', shareLabel: 'Доля служб, %', activeM: 'Активен',
       overwrite: 'Перезаписать уже назначенные', nothingFill: 'В этом диапазоне нечего заполнять — расширьте его или включите перезапись.', assign: 'Оператор', leaveOpen: 'Оставить свободной — спросить группу', deleteService: 'Удалить эту службу',
       ask: 'Спросить', askHint: 'Личный запрос конкретному человеку, не на всю группу.',
@@ -1582,17 +1582,37 @@ class Component extends DCLogic {
         opacity: (!afValid || afSlots === 0) ? 0.45 : 1
       },
       afEmpty: !!dlg.preview && afRows.length === 0,
-      afApplyDisabled: !dlg.preview || afRows.length === 0 || !!st.busy,
+      afApplyDisabled: !afValid || afSlots === 0 || !!st.busy,
+      // A disabled button must LOOK disabled — a solid blue Apply that
+      // does nothing is what made this feel broken.
+      afApplyStyle: {
+        flex: 1, border: 'none', background: '#3b6ef6', color: '#fff', borderRadius: '999px',
+        padding: '12px', fontSize: '14px', fontWeight: 700,
+        cursor: (!afValid || afSlots === 0 || st.busy) ? 'not-allowed' : 'pointer',
+        opacity: (!afValid || afSlots === 0 || st.busy) ? 0.45 : 1
+      },
+      afApplyLabel: st.busy && String(st.busy).startsWith('autofill')
+        ? (L.applying + ' ' + String(st.busy).replace('autofill', '').trim())
+        : (dlg.preview && dlg.preview.length ? L.applyN.replace('{n}', afRows.length) : L.apply),
       onAfGen: () => {
         if (!afValid || !afSlots) return;
         set({ preview: this.autofillCompute(db, dlg.from, dlg.to, afCounts, !!dlg.ow) });
       },
       afErr: dlg.afErr || '',
       onAfApply: async () => {
-        const plan = (dlg.preview || []).filter(p => p.member).map(p => ({
+        // Apply used to require pressing Preview first and silently did
+        // nothing without it. Compute the plan here if there isn't one, so
+        // a single tap always does what the button says.
+        const src = (dlg.preview && dlg.preview.length)
+          ? dlg.preview
+          : this.autofillCompute(db, dlg.from, dlg.to, afCounts, !!dlg.ow);
+        const plan = src.filter(p => p.member).map(p => ({
           id: p.date + p.part, date: p.date, part: p.part, time: p.time + ':00', member_id: p.member
         }));
-        if (!plan.length) return;
+        if (!plan.length) {
+          this.setState({ dlg: Object.assign({}, this.state.dlg, { afErr: L.nothingFill }) });
+          return;
+        }
         // A whole year is 100+ rows. Send it in batches so one oversized
         // request can't fail the lot, and keep the dialog open until it
         // lands — closing it on failure is what made this look like a no-op.
