@@ -131,7 +131,8 @@ input::placeholder { color: #a2a5b3; }
                       <span style="{{ s.chipStyle }}">{{ s.chipText }}</span>
                       <span style="font-size:11px;color:#8a8d99;font-weight:600;white-space:nowrap">{{ s.time }}</span>
                     </span>
-                    <span style="display:flex;align-items:center;gap:6px;min-height:20px">
+                    <span style="display:flex;align-items:center;gap:6px;min-height:20px;flex-wrap:wrap">
+                      <sc-if value="{{ s.wasName }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#a2a5b3;text-decoration:line-through">{{ s.wasName }}</span></sc-if>
                       <span style="font-size:15px;font-weight:600">{{ s.name }}</span>
                       <sc-if value="{{ s.check }}"><span style="width:17px;height:17px;border-radius:50%;background:#e6f6ed;color:#2f9e64;display:inline-flex;align-items:center;justify-content:center">{{ ic.check }}</span></sc-if>
                       <sc-if value="{{ s.tagText }}"><span style="{{ s.tagStyle }}">{{ s.tagText }}</span></sc-if>
@@ -564,6 +565,7 @@ class Component extends DCLogic {
     db: { members: [], slots: {}, requests: {}, settings: { group_name: 'Stream Team', rem_hours: 24, dm_duty: true, alert_swap: true } },
     lang: this.pref('lang', 'en'),
     me: this.pref('me', ''),
+    deep: this.readDeep(),
     ready: false, err: '', busy: '',
     view: 'sched', admin: false, pin: '',
     dlg: null, toast: '', showPast: false, isDesktop: false,
@@ -575,6 +577,40 @@ class Component extends DCLogic {
 
   pref(k, d) { try { return localStorage.getItem('streamteam_' + k) ?? d; } catch (e) { return d; } }
   setPref(k, v) { try { localStorage.setItem('streamteam_' + k, v); } catch (e) {} }
+
+  // Reminder DMs carry a link like  …/#t=2026-08-30E&me=vlad  so tapping it
+  // lands on that exact turn with the confirm sheet already open. Read once
+  // at startup; applied after the first load, when the slot actually exists.
+  readDeep() {
+    try {
+      let raw = (location.hash || '').replace(/^#/, '') || (location.search || '').replace(/^\?/, '');
+      if (!raw) return null;
+      // The link is built for Telegram's HTML mode, where the separator has
+      // to be written &amp;. Browsers decode that back to & in an href, but
+      // if any client hands it over literally we'd end up with a key called
+      // "amp;me", so normalise before parsing.
+      raw = raw.replace(/&amp;/g, '&');
+      const q = new URLSearchParams(raw);
+      const t = q.get('t') || '', who = q.get('me') || '';
+      if (!t && !who) return null;
+      return { t, who };
+    } catch (e) { return null; }
+  }
+
+  applyDeep() {
+    const d = this.state.deep;
+    if (!d) return;
+    const patch = { deep: null, view: 'mine' };
+    const known = d.who && this.state.db.members.some(m => m.id === d.who);
+    if (known) { this.setPref('me', d.who); patch.me = d.who; }
+    const slot = d.t ? this.state.db.slots[d.t] : null;
+    const owner = patch.me || this.state.me;
+    if (slot && slot.member === owner) patch.dlg = { type: 'myturn', slotId: slot.id, swapTo: '' };
+    this.setState(patch);
+    // Drop the parameters so a refresh (or a shared screenshot) doesn't keep
+    // re-opening the sheet or re-assigning who this device belongs to.
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  }
 
   cfg() { return (typeof window !== 'undefined' && window.STREAM_CONFIG) || {}; }
   configured() {
@@ -616,7 +652,7 @@ class Component extends DCLogic {
         slots[x.id] = {
           id: x.id, date: x.date, part: x.part, time: String(x.time).slice(0, 5),
           member: x.member_id || '', open: !!x.open, confirmed: !!x.confirmed,
-          special: x.special || ''
+          special: x.special || '', wasMember: x.replaced_from || ''
         };
       });
 
@@ -631,7 +667,8 @@ class Component extends DCLogic {
 
       const settings = (cfg.data && cfg.data[0]) || this.state.db.settings;
 
-      this.setState({ db: { members, slots, requests, settings }, ready: true, err: '', busy: '' });
+      this.setState({ db: { members, slots, requests, settings }, ready: true, err: '', busy: '' },
+        () => this.applyDeep());
     } catch (e) {
       console.error(e);
       this.setState({ err: (e && e.message) || 'load', ready: true, busy: '' });
@@ -746,6 +783,8 @@ class Component extends DCLogic {
       nextService: 'Next service', yourNext: 'Your next turn', morning: 'Morning', evening: 'Evening',
       today: 'Today', liveNow: 'Happening now', confirm: 'Confirm', confirmed: 'Confirmed',
       confirmOpens: 'You can confirm {when}, once the reminder goes out', soon: 'shortly',
+      coveringFor: 'covering for {n}', handedTo: 'handed to {n}',
+      dHandedOff: 'Turns handed off', dCovered: 'Covered for others',
       confirmRule: 'Confirm unlocks when the reminder goes out. If a turn is still unconfirmed inside the warning window, the group is told once.',
       nUnconfirmed: 'Not confirmed, close to start', warnHours: 'Last-call warning, hours before',
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
@@ -787,6 +826,8 @@ class Component extends DCLogic {
       nextService: 'Следующая служба', yourNext: 'Ваша следующая смена', morning: 'Утренняя', evening: 'Вечерняя',
       today: 'Сегодня', liveNow: 'Идёт сейчас', confirm: 'Подтвердить', confirmed: 'Подтверждено',
       confirmOpens: 'Подтвердить можно {when}, когда придёт напоминание', soon: 'скоро',
+      coveringFor: 'вместо {n}', handedTo: 'передано {n}',
+      dHandedOff: 'Передал свои смены', dCovered: 'Подменил других',
       confirmRule: 'Подтверждение открывается вместе с напоминанием. Если смена не подтверждена в окне предупреждения, группа получит одно сообщение.',
       nUnconfirmed: 'Не подтверждено перед началом', warnHours: 'Предупреждение, часов до',
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
@@ -910,7 +951,9 @@ class Component extends DCLogic {
       // second one's WHERE matches nothing and they are told it is taken,
       // instead of both writing and both being announced to the group.
       let r = await sb.from('services')
-        .update({ member_id: me, open: false, confirmed: false, notified: false, warned: false })
+        // replaced_from records who originally had it, so the schedule can
+        // show the hand-off instead of silently swapping the name.
+        .update({ member_id: me, open: false, confirmed: false, notified: false, warned: false, replaced_from: was || null })
         .eq('id', id)
         .or('open.eq.true,member_id.is.null')
         .select('id');
@@ -937,7 +980,7 @@ class Component extends DCLogic {
     this.act('accept', async () => {
       const sb = this.sbq();
       let r = await sb.from('services')
-        .update({ member_id: req.to, open: false, confirmed: false, notified: false, warned: false })
+        .update({ member_id: req.to, open: false, confirmed: false, notified: false, warned: false, replaced_from: req.from || null })
         .eq('id', req.slotId);
       if (r.error) throw r.error;
       r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
@@ -1127,7 +1170,10 @@ class Component extends DCLogic {
         key: s.id,
         initial: s.member ? this.enName(db, s.member)[0] : '?',
         name: s.member ? this.nameOf(db, s.member, lang) : L.needOp,
-        partLabel: partLabel(s), time: this.t12(s.time), onTap: slotTap(s)
+        partLabel: (s.wasMember && s.wasMember !== s.member)
+          ? partLabel(s) + ' · ' + L.coveringFor.replace('{n}', this.nameOf(db, s.wasMember, lang) || '—')
+          : partLabel(s),
+        time: this.t12(s.time), onTap: slotTap(s)
       }));
       hero.cd = this.cd(this.dtOf(nextSlot), F);
     }
@@ -1213,9 +1259,12 @@ class Component extends DCLogic {
         if (isLive) { tagText = L.live; tagStyle = this.pill('#fdebec', '#e5484d'); }
         else if (s.open) { tagText = L.needCover; tagStyle = this.pill('#fdebec', '#e5484d'); }
         else if (unassigned) { tagText = L.open; tagStyle = this.pill('#eef0f6', '#6d6f7a'); }
+        const wasName = s.wasMember && s.wasMember !== s.member
+          ? (this.nameOf(db, s.wasMember, lang) || '—') : '';
         return {
           key: s.id, style, chipText: chip.text, chipStyle: chip.style, time: this.t12(s.time),
           name: s.member ? this.nameOf(db, s.member, lang) : '—',
+          wasName,
           tagText, tagStyle: tagStyle || {}, check: s.confirmed && !past, onTap: slotTap(s)
         };
       };
@@ -1249,7 +1298,9 @@ class Component extends DCLogic {
       return {
         key: s.id, dayNum: d.getDate(), mon: F.mon[d.getMonth()],
         title: partLabel(s) + ' · ' + this.t12(s.time),
-        sub: this.full(F, lang, d),
+        sub: (s.wasMember && s.wasMember !== s.member)
+          ? this.full(F, lang, d) + ' · ' + L.coveringFor.replace('{n}', this.nameOf(db, s.wasMember, lang) || '—')
+          : this.full(F, lang, d),
         tagText: s.open ? L.needCover : (r && r.type === 'direct' ? L.waiting : ''),
         tagStyle: s.open ? this.pill('#fdebec', '#e5484d') : this.pill('#eef0f6', '#6d6f7a'),
         check: s.confirmed,
@@ -1283,6 +1334,11 @@ class Component extends DCLogic {
       const evenings = mine.filter(s => s.part === 'E').length;
       const specials = mine.filter(s => !!s.special).length;
       const confirmed = done.filter(s => s.confirmed).length;
+      // replaced_from carries the hand-off: they gave a turn away when their
+      // name is the one recorded as replaced, and they picked one up when
+      // they hold a service that records somebody else.
+      const handedOff = sList.filter(s => s.wasMember === m.id && s.member !== m.id).length;
+      const coveredFor = mine.filter(s => s.wasMember && s.wasMember !== m.id).length;
       const nx = ahead[0];
       const lastDone = done[done.length - 1];
       const actual = sTotal ? Math.round(mine.length / sTotal * 100) : 0;
@@ -1314,7 +1370,9 @@ class Component extends DCLogic {
           { key: 'd4', k: L.dSplit, v: mornings + ' M · ' + evenings + ' E' + (specials ? ' · ' + specials + ' ' + L.special.toLowerCase() : '') },
           { key: 'd5', k: L.dNext, v: nx ? (F.mon[new Date(nx.date + 'T12:00').getMonth()] + ' ' + new Date(nx.date + 'T12:00').getDate() + ' · ' + this.t12(nx.time)) : '—' },
           { key: 'd6', k: L.dLast, v: lastDone ? (F.mon[new Date(lastDone.date + 'T12:00').getMonth()] + ' ' + new Date(lastDone.date + 'T12:00').getDate()) : '—' },
-          { key: 'd7', k: L.dShare, v: target ? (actual + '% ' + L.actual + ' · ' + target + '% ' + L.planned) : L.noTarget }
+          { key: 'd7', k: L.dShare, v: target ? (actual + '% ' + L.actual + ' · ' + target + '% ' + L.planned) : L.noTarget },
+          { key: 'd8', k: L.dHandedOff, v: String(handedOff) },
+          { key: 'd9', k: L.dCovered, v: String(coveredFor) }
         ],
         _n: mine.length
       };
