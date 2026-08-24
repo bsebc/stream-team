@@ -99,7 +99,13 @@ input::placeholder { color: #a2a5b3; }
           </div>
         </sc-for>
 
-        <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap">
+          <sc-if value="{{ hasYears }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ yearPills }}" as="y" hint-placeholder-count="2">
+              <button type="button" onClick="{{ y.onTap }}" style="{{ y.style }}">{{ y.label }}</button>
+            </sc-for>
+          </sc-if>
+          <span style="flex:1"></span>
           <button type="button" onClick="{{ togglePast }}" style="border:none;background:none;color:#3b6ef6;font-size:13px;font-weight:600;cursor:pointer;padding:6px 4px">{{ pastLabel }}</button>
         </div>
 
@@ -129,6 +135,9 @@ input::placeholder { color: #a2a5b3; }
             </sc-for>
           </div>
         </sc-for>
+        <sc-if value="{{ moreLabel }}" hint-placeholder-val="{{ false }}">
+          <button type="button" onClick="{{ onMore }}" style="width:100%;margin-top:14px;border:none;background:#fff;box-shadow:0 1px 3px rgba(23,24,28,0.06);border-radius:16px;padding:14px;font-size:14px;font-weight:700;color:#3b6ef6;cursor:pointer">{{ moreLabel }}</button>
+        </sc-if>
       </section>
     </sc-if>
 
@@ -499,8 +508,10 @@ class Component extends DCLogic {
     ready: false, err: '', busy: '',
     view: 'sched', admin: false, pin: '',
     dlg: null, toast: '', showPast: false, isDesktop: false,
-    loginPin: '', loginErr: '', tick: 0
+    loginPin: '', loginErr: '', tick: 0,
+    year: '', monthLimit: 6
   };
+  PAGE = 6;
 
   pref(k, d) { try { return localStorage.getItem('streamteam_' + k) ?? d; } catch (e) { return d; } }
   setPref(k, v) { try { localStorage.setItem('streamteam_' + k, v); } catch (e) {} }
@@ -665,6 +676,7 @@ class Component extends DCLogic {
       today: 'Today', liveNow: 'Happening now', confirm: 'Confirm', confirmed: 'Confirmed',
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
       showPast: 'Show past', hidePast: 'Hide past', special: 'Special', open: 'Open', waiting: 'Waiting', live: 'LIVE',
+      showMore: 'Show {n} more months',
       addCalendar: 'Subscribe in calendar', upcoming: 'Upcoming', noUpcoming: 'No upcoming turns.', thisYear: 'done this year',
       statsTitle: 'Season 2026', done: 'done', ahead: 'ahead', statsNote: 'Plan = target share of all services this year. Bar shows assigned vs plan.',
       members: 'Members', addMember: 'Add', edit: 'Edit',
@@ -689,6 +701,7 @@ class Component extends DCLogic {
       today: 'Сегодня', liveNow: 'Идёт сейчас', confirm: 'Подтвердить', confirmed: 'Подтверждено',
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
+      showMore: 'Показать ещё {n} мес.',
       addCalendar: 'Подписаться в календаре', upcoming: 'Предстоящие', noUpcoming: 'Предстоящих смен нет.', thisYear: 'сделано в этом году',
       statsTitle: 'Сезон 2026', done: 'сделано', ahead: 'впереди', statsNote: 'План — целевая доля всех служб за год. Полоса: назначено против плана.',
       members: 'Участники', addMember: 'Добавить', edit: 'Изменить',
@@ -987,8 +1000,25 @@ class Component extends DCLogic {
       }
     });
 
+    // year picker
+    const years = Array.from(new Set(list.map(s => s.date.slice(0, 4)))).sort();
+    const defYear = (nextSlot && nextSlot.date.slice(0, 4)) || years[years.length - 1] || String(now.getFullYear());
+    const year = years.indexOf(st.year) >= 0 ? st.year : defYear;
+    const yearPills = years.length > 1 ? years.map(y => ({
+      key: y, label: y,
+      onTap: () => this.setState({ year: y, monthLimit: this.PAGE }),
+      style: {
+        border: 'none', borderRadius: '999px', padding: '7px 16px',
+        fontSize: '13.5px', fontWeight: 700, cursor: 'pointer',
+        background: y === year ? '#3b6ef6' : '#fff',
+        color: y === year ? '#fff' : '#6d6f7a',
+        boxShadow: y === year ? 'none' : '0 1px 3px rgba(23,24,28,0.06)'
+      }
+    })) : [];
+
     // months
-    const shown = st.showPast ? list : list.filter(s => this.dtOf(s) > now - 2 * 3600000 || s.date === todayIso);
+    const inYear = list.filter(s => s.date.slice(0, 4) === year);
+    const shown = st.showPast ? inYear : inYear.filter(s => this.dtOf(s) > now - 2 * 3600000 || s.date === todayIso);
     const byDate = {};
     shown.forEach(s => { (byDate[s.date] = byDate[s.date] || []).push(s); });
     const months = [];
@@ -1165,8 +1195,13 @@ class Component extends DCLogic {
       vSched: st.view === 'sched', vMine: st.view === 'mine', vStats: st.view === 'stats', vAdmin: st.view === 'admin',
       hero, openReqs,
       pastLabel: st.showPast ? L.hidePast : L.showPast,
-      togglePast: () => this.setState(s => ({ showPast: !s.showPast })),
-      months,
+      togglePast: () => this.setState(s => ({ showPast: !s.showPast, monthLimit: this.PAGE })),
+      yearPills, hasYears: yearPills.length > 0,
+      months: months.slice(0, st.monthLimit),
+      moreLabel: months.length > st.monthLimit
+        ? L.showMore.replace('{n}', Math.min(this.PAGE, months.length - st.monthLimit))
+        : '',
+      onMore: () => this.setState(s => ({ monthLimit: s.monthLimit + this.PAGE })),
       heroMine, myRows, noUpcoming: !!meM && myFuture.length === 0,
       doneLine: meM ? myDone + ' ' + L.thisYear : '',
       icsHref: meM ? this.icsFor(db, me) : '',
