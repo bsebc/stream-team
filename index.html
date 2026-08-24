@@ -579,7 +579,14 @@ class Component extends DCLogic {
     });
     let out = {};
     try { out = await res.json(); } catch (e) {}
-    if (!res.ok) throw new Error(out.error || ('HTTP ' + res.status));
+    if (!res.ok) {
+      // Distinguish OUR "bad pin" from the gateway rejecting the call
+      // entirely (Verify JWT still enabled on the function).
+      const err = new Error(out.error || out.msg || ('HTTP ' + res.status));
+      err.badPin = out.error === 'bad pin';
+      err.blocked = res.status === 401 && !err.badPin;
+      throw err;
+    }
     return out;
   }
 
@@ -673,7 +680,8 @@ class Component extends DCLogic {
       ask: 'Ask', askHint: 'Sends them a direct request instead of opening it to everyone.',
       firstTaken: 'First to accept takes it', waitingReply: 'Waiting for a reply', pickFirst: 'Pick your name first (top right)', accept: 'Accept', decline: 'Decline', needOp: 'Operator needed',
       loading: 'Loading the schedule…', offline: 'Cannot reach the database. Check your connection.',
-      noConfig: 'Not connected yet — add your Supabase URL and publishable key to config.js.'
+      noConfig: 'Not connected yet — add your Supabase URL and publishable key to config.js.',
+      blocked: 'The server rejected the call. Turn off "Verify JWT" on the notify function.'
     };
     const ru = {
       tabSched: 'Расписание', tabMine: 'Мои смены', tabStats: 'Статистика', tabAdmin: 'Админ',
@@ -696,7 +704,8 @@ class Component extends DCLogic {
       ask: 'Спросить', askHint: 'Личный запрос конкретному человеку, не на всю группу.',
       firstTaken: 'Кто первый согласится', waitingReply: 'Ожидает ответа', pickFirst: 'Сначала выберите имя (справа вверху)', accept: 'Принять', decline: 'Отклонить', needOp: 'Нужен оператор',
       loading: 'Загрузка расписания…', offline: 'Нет связи с базой данных. Проверьте подключение.',
-      noConfig: 'Ещё не подключено — укажите URL и publishable-ключ Supabase в config.js.'
+      noConfig: 'Ещё не подключено — укажите URL и publishable-ключ Supabase в config.js.',
+      blocked: 'Сервер отклонил запрос. Отключите «Verify JWT» у функции notify.'
     };
     return lang === 'ru' ? ru : en;
   }
@@ -1176,7 +1185,10 @@ class Component extends DCLogic {
           this.setState({ admin: true, pin: st.loginPin, loginPin: '', busy: '' });
           if (out.settings) this.setState({ db: Object.assign({}, this.state.db, { settings: out.settings }) });
         } catch (err) {
-          this.setState({ loginErr: /401|pin/i.test(String(err.message)) ? L.wrongPin : String(err.message), busy: '' });
+          const msg = err.badPin ? L.wrongPin
+            : err.blocked ? L.blocked
+            : (err.message || 'failed');
+          this.setState({ loginErr: msg, busy: '' });
         }
       },
       openAutofill: () => {
