@@ -329,6 +329,14 @@ input::placeholder { color: #a2a5b3; }
               <input type="number" min="1" max="24" value="{{ sWarn }}" onChange="{{ onSWarn }}" onBlur="{{ onSWarnCommit }}" style="width:64px;border:none;background:#eef0f6;border-radius:10px;padding:8px 10px;text-align:right;font-size:14px">
             </div>
             <p style="margin:0;font-size:11.5px;color:#a2a5b3;text-wrap:pretty">{{ L.confirmRule }}</p>
+            <div style="border-top:1px solid #eef0f4;padding-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <span style="flex:1;min-width:140px;font-size:13.5px">{{ L.timezone }}</span>
+              <span style="font-size:13px;font-weight:600;color:#2f56c4">{{ sTz }}</span>
+              <sc-if value="{{ tzMismatch }}" hint-placeholder-val="{{ false }}">
+                <button type="button" onClick="{{ onUseTz }}" style="border:none;background:#e8edfd;color:#2f56c4;border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:700;cursor:pointer">{{ useTzLabel }}</button>
+              </sc-if>
+            </div>
+            <p style="margin:0;font-size:11.5px;color:#a2a5b3;text-wrap:pretty">{{ L.tzHint }}</p>
             <div style="border-top:1px solid #eef0f4;padding-top:12px">
               <div style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:#a2a5b3">{{ L.nWhat }}</div>
               <div style="font-size:11.5px;color:#a2a5b3;margin-top:7px;margin-bottom:2px">{{ L.nGroup }}</div>
@@ -822,6 +830,8 @@ class Component extends DCLogic {
       dHandedOff: 'Turns handed off', dCovered: 'Covered for others',
       confirmRule: 'Confirm unlocks when the reminder goes out. If a turn is still unconfirmed inside the warning window, the group is told once.',
       nUnconfirmed: 'Not confirmed, close to start', warnHours: 'Last-call warning, hours before',
+      timezone: 'Time zone of service times', useTz: 'Use {tz}',
+      tzHint: 'The bot converts service times using this zone. If reminders arrive early or late, set it to your own.',
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
       showPast: 'Show past', hidePast: 'Hide past', special: 'Special', open: 'Open', waiting: 'Waiting', live: 'LIVE',
       showMore: 'Show {n} more months', showMoreTurns: 'Show {n} more',
@@ -870,6 +880,8 @@ class Component extends DCLogic {
       dHandedOff: 'Передал свои смены', dCovered: 'Подменил других',
       confirmRule: 'Подтверждение открывается вместе с напоминанием. Если смена не подтверждена в окне предупреждения, группа получит одно сообщение.',
       nUnconfirmed: 'Не подтверждено перед началом', warnHours: 'Предупреждение, часов до',
+      timezone: 'Часовой пояс расписания', useTz: 'Взять {tz}',
+      tzHint: 'Бот пересчитывает время служб по этому поясу. Если напоминания приходят раньше или позже — укажите свой.',
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
       showMore: 'Показать ещё {n} мес.', showMoreTurns: 'Показать ещё {n}',
@@ -1181,6 +1193,8 @@ class Component extends DCLogic {
     const D = k => dlg.type === k;
     const set = patch => this.setState({ dlg: Object.assign({}, this.state.dlg, patch) });
     const fld = k => e => set({ [k]: e.target.value });
+    let deviceTz = '';
+    try { deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
     const list = this.slotList(db);
     const future = list.filter(s => this.dtOf(s) > now);
     const partLabel = s => s.special || (s.part === 'M' ? L.morning : L.evening);
@@ -1630,6 +1644,14 @@ class Component extends DCLogic {
       onSRem: e => this.setState({ remDraft: e.target.value }),
       sWarn: st.warnDraft === null ? (db.settings.warn_hours ?? 2) : st.warnDraft,
       onSWarn: e => this.setState({ warnDraft: e.target.value }),
+      // Service times are wall-clock times, so the bot has to know which
+      // zone they are written in or its reminders drift by the UTC offset.
+      // Offering this device's zone beats making the admin type an IANA name.
+      sTz: db.settings.timezone || '—',
+      tzMismatch: !!deviceTz && db.settings.timezone !== deviceTz,
+      useTzLabel: L.useTz.replace('{tz}', (deviceTz || '').split('/').pop().replace(/_/g, ' ')),
+      onUseTz: () => this.act('settings', () =>
+        this.fn({ action: 'admin_save_settings', pin: st.pin, timezone: deviceTz })),
       onSWarnCommit: () => {
         if (st.warnDraft === null) return;
         const v = Math.max(1, Math.min(24, +st.warnDraft || 2));
