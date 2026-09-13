@@ -133,7 +133,7 @@ input::placeholder { color: #a2a5b3; }
                     </span>
                     <span style="display:flex;align-items:center;gap:6px;min-height:20px;flex-wrap:wrap">
                       <sc-if value="{{ s.wasName }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:#a2a5b3;text-decoration:line-through">{{ s.wasName }}</span></sc-if>
-                      <span style="font-size:15px;font-weight:600">{{ s.name }}</span>
+                      <span style="{{ s.nameStyle }}">{{ s.name }}</span>
                       <sc-if value="{{ s.check }}"><span style="width:17px;height:17px;border-radius:50%;background:#e6f6ed;color:#2f9e64;display:inline-flex;align-items:center;justify-content:center">{{ ic.check }}</span></sc-if>
                       <sc-if value="{{ s.tagText }}"><span style="{{ s.tagStyle }}">{{ s.tagText }}</span></sc-if>
                     </span>
@@ -425,9 +425,15 @@ input::placeholder { color: #a2a5b3; }
             <sc-if value="{{ aOpenChecked }}"><span style="color:#3b6ef6;display:inline-flex">{{ ic.check }}</span></sc-if>
           </button>
         </div>
-        <sc-if value="{{ aIsSpecial }}">
-          <button type="button" onClick="{{ onDeleteSpecial }}" style="border:none;background:none;color:#e5484d;font-size:13.5px;font-weight:600;cursor:pointer;padding:10px 4px 0">{{ L.deleteService }}</button>
+        <sc-if value="{{ aCancelled }}" hint-placeholder-val="{{ false }}">
+          <p style="margin:12px 2px 0;font-size:11.5px;color:#a2a5b3;text-wrap:pretty">{{ L.cancelledNote }}</p>
         </sc-if>
+        <div style="display:flex;flex-direction:column;gap:2px;border-top:1px solid #eef0f4;margin-top:12px;padding-top:6px">
+          <button type="button" onClick="{{ onToggleCancel }}" style="{{ aCancelStyle }}">{{ aCancelLabel }}</button>
+          <sc-if value="{{ aIsSpecial }}">
+            <button type="button" onClick="{{ onDeleteSpecial }}" style="border:none;background:none;color:#e5484d;font-size:13.5px;font-weight:600;cursor:pointer;padding:10px 4px;text-align:left">{{ L.deleteService }}</button>
+          </sc-if>
+        </div>
       </div>
     </div>
   </sc-if>
@@ -609,6 +615,7 @@ class Component extends DCLogic {
   };
   PAGE = 6;
   MINE_PAGE = 8;
+  _tz = '';   // church zone, filled from settings on load
 
   pref(k, d) { try { return localStorage.getItem('streamteam_' + k) ?? d; } catch (e) { return d; } }
   setPref(k, v) { try { localStorage.setItem('streamteam_' + k, v); } catch (e) {} }
@@ -690,7 +697,8 @@ class Component extends DCLogic {
         slots[x.id] = {
           id: x.id, date: x.date, part: x.part, time: String(x.time).slice(0, 5),
           member: x.member_id || '', open: !!x.open, confirmed: !!x.confirmed,
-          special: x.special || '', wasMember: x.replaced_from || ''
+          special: x.special || '', wasMember: x.replaced_from || '',
+          cancelled: !!x.cancelled
         };
       });
 
@@ -704,6 +712,9 @@ class Component extends DCLogic {
       });
 
       const settings = (cfg.data && cfg.data[0]) || this.state.db.settings;
+      // Read before the re-render, so every dtOf() below resolves in the
+      // church's zone rather than whatever this phone is set to.
+      this._tz = settings.timezone || '';
 
       this.setState({ db: { members, slots, requests, settings }, ready: true, err: '', busy: '' },
         () => this.applyDeep());
@@ -787,7 +798,32 @@ class Component extends DCLogic {
 
   now() { return new Date(); }
   iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-  dtOf(s) { return new Date(s.date + 'T' + s.time + ':00'); }
+  // The bot converts service times using the zone configured in Admin. The
+  // app has to use the SAME one, or the confirm window and the reminder
+  // disagree for anyone whose phone is set elsewhere — a member travelling,
+  // or a device with the wrong zone. Falls back to device-local.
+  zoneOffsetMs(at, tz) {
+    try {
+      const p = new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, hour12: false,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      }).formatToParts(at);
+      const g = t => Number((p.find(x => x.type === t) || {}).value || 0);
+      return Date.UTC(g('year'), g('month') - 1, g('day'), g('hour') % 24, g('minute'), g('second')) - at.getTime();
+    } catch (e) { return null; }
+  }
+
+  dtOf(s) {
+    const tz = this._tz;
+    if (!tz) return new Date(s.date + 'T' + s.time + ':00');
+    const naive = new Date(s.date + 'T' + s.time + ':00Z');
+    const first = this.zoneOffsetMs(naive, tz);
+    if (first === null) return new Date(s.date + 'T' + s.time + ':00');
+    // One correction pass, so a DST changeover lands on the right side.
+    const settled = this.zoneOffsetMs(new Date(naive.getTime() - first), tz);
+    return new Date(naive.getTime() - (settled === null ? first : settled));
+  }
   slotList(db) { return Object.values(db.slots).sort((a, b) => this.dtOf(a) - this.dtOf(b)); }
   mem(db, id) { return db.members.find(m => m.id === id) || null; }
   nameOf(db, id, lang) { const m = this.mem(db, id); if (!m) return ''; return (lang === 'ru' && m.ru) ? m.ru : m.name; }
@@ -835,6 +871,9 @@ class Component extends DCLogic {
       needCover: 'Needs cover', cover: "I'll cover it", requestCover: 'Request replacement', cancelReq: 'Cancel request',
       showPast: 'Show past', hidePast: 'Hide past', special: 'Special', open: 'Open', waiting: 'Waiting', live: 'LIVE',
       showMore: 'Show {n} more months', showMoreTurns: 'Show {n} more',
+      cancelledTag: 'Cancelled', cancelService: 'Cancel this service', restoreService: 'Put this service back on',
+      cancelledNote: 'Called off. It stays here for the record and counts toward nobody\u2019s stats.',
+      autoConfirmed: 'Counted as confirmed \u2014 you took it inside the reminder window.',
       emptyPast: 'Nothing upcoming in {y}. Turn on Show past to see it.',
       emptyYear: 'Nothing scheduled in {y} yet. Use Auto-fill in Admin to plan it.',
       addCalendar: 'Subscribe in calendar', upcoming: 'Upcoming', noUpcoming: 'No upcoming turns.', thisYear: 'done this year',
@@ -885,6 +924,9 @@ class Component extends DCLogic {
       needCover: 'Нужна замена', cover: 'Я подменю', requestCover: 'Попросить замену', cancelReq: 'Отменить запрос',
       showPast: 'Показать прошедшие', hidePast: 'Скрыть прошедшие', special: 'Особая', open: 'Свободно', waiting: 'Ожидание', live: 'ЭФИР',
       showMore: 'Показать ещё {n} мес.', showMoreTurns: 'Показать ещё {n}',
+      cancelledTag: 'Отменена', cancelService: 'Отменить эту службу', restoreService: 'Вернуть службу в расписание',
+      cancelledNote: 'Отменена. Остаётся в расписании для истории и никому не идёт в статистику.',
+      autoConfirmed: 'Считается подтверждённой — вы взяли смену в окне напоминания.',
       emptyPast: 'В {y} предстоящих служб нет. Включите «Показать прошедшие».',
       emptyYear: 'На {y} пока ничего не запланировано. Используйте автозаполнение в разделе «Админ».',
       addCalendar: 'Подписаться в календаре', upcoming: 'Предстоящие', noUpcoming: 'Предстоящих смен нет.', thisYear: 'сделано в этом году',
@@ -1000,11 +1042,25 @@ class Component extends DCLogic {
       await this.fn({ event: 'cancelled', service_id: id, from, to: askedTo || undefined });
     });
   }
+  // Taking a turn inside the confirm window IS the confirmation — asking
+  // someone to tap "I'll cover it" and then "Confirm" ten seconds later is
+  // busywork, and the unconfirmed state would trip the last-call warning.
+  // Outside the window the flags reset so the new operator gets their own
+  // reminder at the normal time.
+  handoffFlags(id) {
+    const s = this.state.db.slots[id];
+    const inWindow = s ? this.confirmWindow(this.state.db, s).open : false;
+    return inWindow
+      ? { confirmed: true, notified: true, warned: true }
+      : { confirmed: false, notified: false, warned: false };
+  }
+
   doCover(id) {
     const me = this.state.me;
     const slot = this.state.db.slots[id];
     const was = slot ? slot.member : '';
     const req = this.reqFor(this.state.db, id);
+    const flags = this.handoffFlags(id);
     this.act('cover', async () => {
       const sb = this.sbq();
       // One atomic UPDATE: the row is only taken if it is STILL open (or
@@ -1014,7 +1070,7 @@ class Component extends DCLogic {
       let r = await sb.from('services')
         // replaced_from records who originally had it, so the schedule can
         // show the hand-off instead of silently swapping the name.
-        .update({ member_id: me, open: false, confirmed: false, notified: false, warned: false, replaced_from: was || null })
+        .update(Object.assign({ member_id: me, open: false, replaced_from: was || null }, flags))
         .eq('id', id)
         .or('open.eq.true,member_id.is.null')
         .select('id');
@@ -1024,7 +1080,7 @@ class Component extends DCLogic {
         r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
         if (r.error) throw r.error;
       }
-      await this.fn({ event: 'covered', service_id: id, by: me, from: was });
+      await this.fn({ event: 'covered', service_id: id, by: me, from: was, auto_confirmed: flags.confirmed });
     });
   }
   doAsk(id, to) {
@@ -1038,15 +1094,41 @@ class Component extends DCLogic {
     });
   }
   doAccept(req) {
+    const flags = this.handoffFlags(req.slotId);
     this.act('accept', async () => {
       const sb = this.sbq();
       let r = await sb.from('services')
-        .update({ member_id: req.to, open: false, confirmed: false, notified: false, warned: false, replaced_from: req.from || null })
+        .update(Object.assign({ member_id: req.to, open: false, replaced_from: req.from || null }, flags))
         .eq('id', req.slotId);
       if (r.error) throw r.error;
       r = await sb.from('requests').update({ status: 'done' }).eq('id', req.id);
       if (r.error) throw r.error;
-      await this.fn({ event: 'covered', service_id: req.slotId, by: req.to, from: req.from });
+      await this.fn({ event: 'covered', service_id: req.slotId, by: req.to, from: req.from, auto_confirmed: flags.confirmed });
+    });
+  }
+
+  // Admin only: call a service off, or put it back on. The row is kept so
+  // the record survives and nobody's history silently changes.
+  doCancelService(id, on) {
+    const s = this.state.db.slots[id];
+    this.act('cancelsvc', async () => {
+      const sb = this.sbq();
+      const r = await sb.from('services')
+        .update(on
+          ? { cancelled: true, open: false, confirmed: false, warned: true }
+          : { cancelled: false, notified: false, warned: false })
+        .eq('id', id);
+      if (r.error) throw r.error;
+      // Drop anything pending — there is nothing left to cover.
+      if (on) {
+        await sb.from('requests').update({ status: 'cancelled' })
+          .eq('service_id', id).eq('status', 'pending');
+      }
+      await this.fn({
+        event: on ? 'service_cancelled' : 'service_restored',
+        service_id: id, member: s ? s.member : ''
+      });
+      this.setState({ dlg: null });
     });
   }
   doDecline(req) {
@@ -1108,6 +1190,9 @@ class Component extends DCLogic {
         const id = date + part, ex = db.slots[id];
         const t = part === 'M' ? '10:00' : '18:00';
         if (new Date(date + 'T' + t) <= nowT) { if (ex && ex.member) lastIdx[ex.member] = wi; return; }
+        // A cancelled service is off the board — auto-fill must not quietly
+        // put it back on by assigning an operator to it.
+        if (ex && ex.cancelled) return;
         if (ex && ex.member && !ow) { lastIdx[ex.member] = wi; return; }
         const takenToday = plan.filter(p => p.date === date).map(p => p.member);
         const other = db.slots[date + (part === 'M' ? 'E' : 'M')];
@@ -1130,7 +1215,7 @@ class Component extends DCLogic {
   }
 
   icsFor(db, me) {
-    const ev = this.slotList(db).filter(s => s.member === me && this.dtOf(s) > this.now());
+    const ev = this.slotList(db).filter(s => s.member === me && !s.cancelled && this.dtOf(s) > this.now());
     const pad = x => String(x).padStart(2, '0');
     const stamp = d => d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + 'T' + pad(d.getHours()) + pad(d.getMinutes()) + '00';
     const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//StreamTeam//EN', 'X-WR-CALNAME:Livestream duty'];
@@ -1196,7 +1281,10 @@ class Component extends DCLogic {
     let deviceTz = '';
     try { deviceTz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) {}
     const list = this.slotList(db);
-    const future = list.filter(s => this.dtOf(s) > now);
+    // A cancelled service is off the board: no hero slot, no reminder queue,
+    // no turn on anyone's list. It stays visible in the full schedule so the
+    // team can see it was called off rather than wondering where it went.
+    const future = list.filter(s => this.dtOf(s) > now && !s.cancelled);
     const partLabel = s => s.special || (s.part === 'M' ? L.morning : L.evening);
 
     // banner
@@ -1210,6 +1298,7 @@ class Component extends DCLogic {
       const dtv = this.dtOf(s);
       const isLive = dtv <= now && now - dtv < 2 * 3600000;
       if (st.admin) { this.setState({ dlg: { type: 'assign', slotId: s.id } }); return; }
+      if (s.cancelled) return;   // nothing for a member to do with it
       if (dtv <= now && !isLive) return;
       if (me && s.member === me) { this.setState({ dlg: { type: 'myturn', slotId: s.id, swapTo: '' } }); return; }
       if (s.open || !s.member) {
@@ -1220,7 +1309,7 @@ class Component extends DCLogic {
 
     // hero
     const nextSlot = future[0] || null;
-    const liveSlots = list.filter(s => { const d = this.dtOf(s); return d <= now && now - d < 2 * 3600000; });
+    const liveSlots = list.filter(s => { const d = this.dtOf(s); return !s.cancelled && d <= now && now - d < 2 * 3600000; });
     const hero = { kicker: L.nextService, title: st.ready ? '—' : ' ', liveLine: '', people: [], cd: '' };
     if (liveSlots.length) {
       const lv = liveSlots[liveSlots.length - 1];
@@ -1245,7 +1334,7 @@ class Component extends DCLogic {
     const pend = Object.values(db.requests).filter(r => r.status === 'pending').sort((a, b) => a.ts - b.ts);
     const openReqs = [];
     pend.forEach(r => {
-      const s = db.slots[r.slotId]; if (!s || this.dtOf(s) <= now) return;
+      const s = db.slots[r.slotId]; if (!s || s.cancelled || this.dtOf(s) <= now) return;
       const slotTxt = this.full(F, lang, new Date(s.date + 'T12:00')) + ' · ' + this.t12(s.time);
       if (r.type === 'open') {
         openReqs.push({
@@ -1330,7 +1419,15 @@ class Component extends DCLogic {
         const past = dtv <= now && !isLive;
         const mine = !!me && s.member === me;
         const unassigned = !s.member;
-        const style = {
+        // A cancelled service reads as struck off the board: flat grey, no
+        // "needs cover" dashes, no "mine" highlight — there is nothing to do.
+        const style = s.cancelled ? {
+          background: '#f7f8fc', border: 'none', boxShadow: 'inset 0 0 0 1px #e6e8f0',
+          borderRadius: '14px', padding: '9px 12px', minHeight: '58px',
+          display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'stretch',
+          textAlign: 'left', cursor: st.admin ? 'pointer' : 'default',
+          opacity: past ? 0.45 : 0.7, font: 'inherit', color: 'inherit'
+        } : {
           background: mine && !past ? '#eef3ff' : '#fff',
           border: s.open || unassigned ? '1.5px dashed #f0a6aa' : 'none',
           boxShadow: s.open || unassigned ? 'none' : (mine && !past ? 'inset 0 0 0 1.5px #b7cbfb, 0 1px 2px rgba(23,24,28,0.05)' : '0 1px 2px rgba(23,24,28,0.05)'),
@@ -1341,16 +1438,21 @@ class Component extends DCLogic {
         if (s.special) style.gridColumn = 'span 2';
         const chip = this.partChip(s, L);
         let tagText = '', tagStyle = null;
-        if (isLive) { tagText = L.live; tagStyle = this.pill('#fdebec', '#e5484d'); }
+        if (s.cancelled) { tagText = L.cancelledTag; tagStyle = this.pill('#e6e8f0', '#6d6f7a'); }
+        else if (isLive) { tagText = L.live; tagStyle = this.pill('#fdebec', '#e5484d'); }
         else if (s.open) { tagText = L.needCover; tagStyle = this.pill('#fdebec', '#e5484d'); }
         else if (unassigned) { tagText = L.open; tagStyle = this.pill('#eef0f6', '#6d6f7a'); }
-        const wasName = s.wasMember && s.wasMember !== s.member
+        const wasName = !s.cancelled && s.wasMember && s.wasMember !== s.member
           ? (this.nameOf(db, s.wasMember, lang) || '—') : '';
         return {
           key: s.id, style, chipText: chip.text, chipStyle: chip.style, time: this.t12(s.time),
           name: s.member ? this.nameOf(db, s.member, lang) : '—',
+          nameStyle: s.cancelled
+            ? { fontSize: '15px', fontWeight: 600, textDecoration: 'line-through', color: '#8a8d99' }
+            : { fontSize: '15px', fontWeight: 600 },
           wasName,
-          tagText, tagStyle: tagStyle || {}, check: s.confirmed && !past, onTap: slotTap(s)
+          tagText, tagStyle: tagStyle || {},
+          check: s.confirmed && !past && !s.cancelled, onTap: slotTap(s)
         };
       };
       if (regular.length) mo.rows.push({ key: date, dayNum: d.getDate(), dow: F.dow[d.getDay()], dayStyle, slots: regular.map(mkCell) });
@@ -1397,7 +1499,9 @@ class Component extends DCLogic {
 
     // ---- stats: its own year picker, one expandable row per member ----
     const sYear = years.indexOf(st.statsYear) >= 0 ? st.statsYear : defYear;
-    const sList = list.filter(s => s.date.slice(0, 4) === sYear);
+    // Cancelled services never happened, so they must not count toward
+    // anyone's done total, their share, or the season's denominator.
+    const sList = list.filter(s => s.date.slice(0, 4) === sYear && !s.cancelled);
     const sTotal = sList.length;
     const statYearPills = years.length > 1 ? years.map(y => ({
       key: y, label: y,
@@ -1713,9 +1817,20 @@ class Component extends DCLogic {
       }),
       aIsSpecial: !!dlgSlot && !!dlgSlot.special,
       onDeleteSpecial: () => this.act('delete', () => this.fn({ action: 'admin_delete_service', pin: st.pin, id: dlgSlot.id })),
+      // Cancelling keeps the row (history intact); deleting is only offered
+      // for a special service the admin created by mistake.
+      aCancelled: !!dlgSlot && !!dlgSlot.cancelled,
+      aCancelLabel: dlgSlot && dlgSlot.cancelled ? L.restoreService : L.cancelService,
+      onToggleCancel: () => this.doCancelService(dlgSlot.id, !dlgSlot.cancelled),
+      aCancelStyle: {
+        border: 'none', background: 'none', cursor: 'pointer',
+        fontSize: '13.5px', fontWeight: 600, padding: '10px 4px', textAlign: 'left',
+        color: dlgSlot && dlgSlot.cancelled ? '#2f9e64' : '#e5484d',
+        opacity: st.busy === 'cancelsvc' ? 0.5 : 1
+      },
       dMy: D('myturn'), myTitle: sTitle(dlgSlot), mySub: sSub(dlgSlot),
       myConfirmed: !!dlgSlot && dlgSlot.confirmed,
-      myCanConfirm: !!dlgSlot && !dlgSlot.confirmed && !dlgSlot.open && this.confirmWindow(db, dlgSlot).open,
+      myCanConfirm: !!dlgSlot && !dlgSlot.confirmed && !dlgSlot.open && !dlgSlot.cancelled && this.confirmWindow(db, dlgSlot).open,
       myLocked: (() => {
         if (!dlgSlot || dlgSlot.confirmed || dlgSlot.open) return '';
         const w = this.confirmWindow(db, dlgSlot);
