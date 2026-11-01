@@ -1141,6 +1141,8 @@ class Component extends DCLogic {
 
   // ---------- autofill ----------
 
+  isActiveM(db, id) { const m = db.members.find(x => x.id === id); return !!(m && m.active); }
+
   // How many M/E slots the range would actually fill.
   slotsInRange(db, from, to, ow) {
     const start = new Date(from + 'T00:00'), end = new Date(to + 'T23:59');
@@ -1154,7 +1156,9 @@ class Component extends DCLogic {
         const t = part === 'M' ? '10:00' : '18:00';
         if (new Date(date + 'T' + t) <= nowT) return;
         const ex = db.slots[date + part];
-        if (ex && ex.member && !ow) return;
+        if (ex && ex.cancelled) return;
+        // A slot held by a deactivated member counts as open.
+        if (ex && ex.member && !ow && this.isActiveM(db, ex.member)) return;
         n++;
       });
     }
@@ -1193,10 +1197,10 @@ class Component extends DCLogic {
         // A cancelled service is off the board — auto-fill must not quietly
         // put it back on by assigning an operator to it.
         if (ex && ex.cancelled) return;
-        if (ex && ex.member && !ow) { lastIdx[ex.member] = wi; return; }
+        if (ex && ex.member && !ow && this.isActiveM(db, ex.member)) { lastIdx[ex.member] = wi; return; }
         const takenToday = plan.filter(p => p.date === date).map(p => p.member);
         const other = db.slots[date + (part === 'M' ? 'E' : 'M')];
-        if (other && other.member && !ow) takenToday.push(other.member);
+        if (other && other.member && !ow && this.isActiveM(db, other.member)) takenToday.push(other.member);
         let cands = db.members.filter(m => m.active && rem[m.id] > 0 && !takenToday.includes(m.id));
         if (!cands.length) cands = db.members.filter(m => m.active && rem[m.id] > 0);
         if (!cands.length) { plan.push({ date, part, time: t, member: '', was: ex ? ex.member : '' }); return; }
