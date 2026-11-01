@@ -22,11 +22,12 @@ const TG    = Deno.env.get("TELEGRAM_TOKEN")!;
 const GROUP = Deno.env.get("TELEGRAM_GROUP")!;
 const APP   = "https://stream.bsebc.com";
 
-// Old copies of the page (open on someone's phone during a deploy) send the
-// pre-2026-11 {event: ...} calls after writing to the tables themselves.
-// Once the database stops accepting those writes, the events are only a way
-// to post fake messages, so they stay off.
-const LEGACY_EVENTS = false;
+// Old copies of the page (open on someone's phone during the 2026-11-01
+// switch-over) write to the tables themselves and then send the old
+// {event: ...} calls. Those are honoured only until LEGACY_UNTIL; once the
+// tables are read-only they would only be a way to post fake messages.
+// Safe to delete this and runLegacyEvent() on the next deploy.
+const LEGACY_UNTIL = Date.parse("2026-11-01T19:30:00Z");   // 2:30 PM New York
 
 const db = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -918,7 +919,7 @@ async function runAdmin(b: any, ip: string) {
 
 // ==================== legacy events (off) ====================
 // Kept only so a deploy can briefly accept calls from pages that were open
-// before the update. See LEGACY_EVENTS.
+// before the update. See LEGACY_UNTIL.
 
 async function runLegacyEvent(b: any) {
   if (b.event === "test") {
@@ -1000,7 +1001,7 @@ Deno.serve(async (req) => {
         return fail("unknown action");
       }
       if (b?.event) {
-        if (!LEGACY_EVENTS) return fail("gone", 410, "Update the app: reload the page.");
+        if (Date.now() > LEGACY_UNTIL) return fail("gone", 410, "Update the app: reload the page.");
         if (await rateHit("evt:" + ip, 600) > 30) return fail("busy", 429);
         return await runLegacyEvent(b);
       }
