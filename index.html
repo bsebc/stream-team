@@ -178,6 +178,7 @@ input::placeholder { color: var(--faint); }
 .row { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 10px 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; }
 .row + .row::before { content: ""; position: absolute; top: 0; right: 0; left: 16px; height: 1px; background: var(--line); }
 .group.inset .row + .row::before { left: 68px; }
+.group.cal .row + .row::before { left: 74px; }
 button.row { cursor: pointer; transition: background-color .15s; }
 button.row:active { background: var(--sunken); }
 @media (hover: hover) { button.row:hover { background: var(--surface-2); } }
@@ -194,6 +195,16 @@ button.row:active { background: var(--sunken); }
 .dnum { width: 42px; flex: none; display: flex; flex-direction: column; align-items: center; line-height: 1; }
 .dnum .num { font-size: 19px; font-weight: 500; letter-spacing: -0.02em; }
 .dnum .mon { margin-top: 5px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+/* Upcoming dates drawn like the iPhone Calendar app icon: white tile, month
+   in system red, the day underneath. Dark tile in dark mode, like iOS. */
+.calicon { width: 46px; height: 48px; flex: none; display: flex; flex-direction: column; align-items: center; border-radius: 11px; background: #FFFFFF; box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgba(25, 28, 43, 0.1); overflow: hidden; }
+.calicon .m { margin-top: 6px; font-size: 9.5px; line-height: 1; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #FF3B30; }
+.calicon .d { margin-top: 3px; font-family: var(--ui); font-size: 24px; line-height: 1; font-weight: 450; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: #1C1C1E; }
+@media (prefers-color-scheme: dark) {
+  .calicon { background: #2C2C2E; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.07), 0 1px 3px rgba(0, 0, 0, 0.4); }
+  .calicon .m { color: #FF453A; }
+  .calicon .d { color: #FFFFFF; }
+}
 .ico { width: 32px; height: 32px; flex: none; border-radius: 9px; display: grid; place-items: center; color: #fff; }
 .ico.brand { background: var(--brand); } .ico.dusk { background: var(--dusk); } .ico.go { background: var(--go); }
 .ico.amber { background: var(--amber); } .ico.grey { background: var(--muted); } .ico.red { background: var(--tally); }
@@ -517,10 +528,10 @@ select.input { background-image: linear-gradient(45deg, transparent 50%, var(--m
         <sc-if value="{{ mine.hasMe }}">
           <sc-if value="{{ mine.showHead }}"><div class="sec"><h2>{{ L.upcoming }}</h2><span class="aside">{{ mine.doneLine }}</span></div></sc-if>
           <sc-if value="{{ mine.hasRows }}">
-            <div class="group">
+            <div class="group cal">
               <sc-for list="{{ mine.rows }}" as="m">
                 <button type="button" class="row" onClick="{{ m.onTap }}">
-                  <span class="dnum"><span class="num">{{ m.dayNum }}</span><span class="mon">{{ m.mon }}</span></span>
+                  <span class="calicon" aria-hidden="true"><span class="m">{{ m.mon }}</span><span class="d">{{ m.dayNum }}</span></span>
                   <span class="row-main"><span class="row-title">{{ m.title }}</span><span class="{{ m.subCls }}">{{ m.sub }}</span></span>
                   <span class="time num">{{ m.time }}</span>
                   <span class="lamp sm" data-s="{{ m.lamp }}" aria-hidden="true"></span>
