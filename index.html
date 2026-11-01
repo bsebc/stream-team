@@ -136,7 +136,7 @@ input::placeholder { color: var(--faint); }
 .topbar.scrolled { box-shadow: 0 1px 0 var(--line); }
 .topbar-in { max-width: 760px; margin: 0 auto; height: 54px; display: flex; align-items: center; gap: 10px; padding: 0 16px; }
 .brand { display: flex; align-items: center; gap: 9px; margin-right: auto; font-size: 16px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
-.mark { width: 28px; height: 28px; flex: none; border-radius: 8px; background: linear-gradient(140deg, #4f7df9, #7a5cf0); display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+.mark { width: 28px; height: 28px; flex: none; border-radius: 8px; background: linear-gradient(180deg, #FFFFFF, #E8EAF2); display: grid; place-items: center; box-shadow: inset 0 0 0 1px rgba(25, 28, 43, 0.1), 0 1px 2px rgba(25, 28, 43, 0.08); overflow: hidden; }
 .seg { display: inline-flex; padding: 2px; border-radius: 10px; background: var(--sunken); }
 .seg button { border: 0; background: none; padding: 5px 9px; border-radius: 8px; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; color: var(--muted); cursor: pointer; transition: background-color .15s, color .15s; }
 .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(25,28,43,0.1); }
@@ -1698,15 +1698,18 @@ class Component extends DCLogic {
     return e('svg', { viewBox: '0 0 24 24', width: size, height: size, fill: 'none', stroke: 'currentColor', strokeWidth: sw, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true, style: { flex: 'none' } }, P[name]);
   }
 
-  // The brand mark: a camera with a red LIVE dot — same artwork as the icon.
+  // The brand mark: a camera viewfinder framing a cross, with the red
+  // recording dot — the same artwork as the home-screen icon (icon.svg).
   brandMark(size) {
     const e = React.createElement;
     return e('svg', { viewBox: '0 0 100 100', width: size, height: size, 'aria-hidden': true, style: { flex: 'none', display: 'block' } }, [
-      e('g', { key: 'a', fill: 'none', stroke: '#fff', strokeWidth: 8, strokeLinejoin: 'round', strokeLinecap: 'round' }, [
-        e('rect', { key: 1, x: 17, y: 34, width: 45, height: 34, rx: 8 }),
-        e('path', { key: 2, d: 'M68 45.5 83 37v28l-15-8.5z' })
+      e('g', { key: 'a', fill: 'none', stroke: '#191C2B', strokeWidth: 6, strokeLinejoin: 'round', strokeLinecap: 'round' }, [
+        e('path', { key: 1, d: 'M23 37v-6a8 8 0 0 1 8-8h6' }), e('path', { key: 2, d: 'M63 23h6a8 8 0 0 1 8 8v6' }),
+        e('path', { key: 3, d: 'M77 63v6a8 8 0 0 1-8 8h-6' }), e('path', { key: 4, d: 'M37 77h-6a8 8 0 0 1-8-8v-6' })
       ]),
-      e('circle', { key: 'b', cx: 77, cy: 25, r: 9, fill: '#ff4d4f' })
+      e('rect', { key: 'v', x: 46, y: 31, width: 8, height: 41, rx: 2, fill: '#191C2B' }),
+      e('rect', { key: 'h', x: 36, y: 40, width: 28, height: 8, rx: 2, fill: '#191C2B' }),
+      e('circle', { key: 'd', cx: 66, cy: 33.5, r: 5, fill: '#FF3B30' })
     ]);
   }
 
@@ -1721,7 +1724,7 @@ class Component extends DCLogic {
     const busy = k => st.busy === k;
     const btn = (base, k) => base + (busy(k) ? ' busy' : '');
     const ic = {
-      mark: this.brandMark(20), check: this.icon('check', 17), checkLg: this.icon('check', 20), plus: this.icon('plus', 17), download: this.icon('download', 18),
+      mark: this.brandMark(28), check: this.icon('check', 17), checkLg: this.icon('check', 20), plus: this.icon('plus', 17), download: this.icon('download', 18),
       swap: this.icon('swap', 17), chev: this.icon('chev', 17), lock: this.icon('lock', 18), clock: this.icon('clock', 16), send: this.icon('send', 17),
       x: this.icon('x', 18), sun: this.icon('sun', 14), moon: this.icon('moon', 13), star: this.icon('star', 17), users: this.icon('users', 18),
       wand: this.icon('wand', 18), key: this.icon('key', 18), out: this.icon('out', 18), eye: this.icon('eye', 18), alert: this.icon('alert', 15), info: this.icon('info', 15)
