@@ -885,7 +885,7 @@ class Component extends DCLogic {
       actual: 'actual', planned: 'planned', noTarget: 'No target set',
       members: 'Members', addMember: 'Add', edit: 'Edit',
       autofill: 'Auto-fill', autofillSub: 'Spread services by each member\u2019s share', afSub: 'Assigns Sunday morning + evening services across the range.',
-      afTargets: 'Share of services', afTotal: 'Total', afMustBe: 'must add up to 100%', afBalance: 'Balance to 100%',
+      afTargets: 'Share of services', afTotal: 'Total', afMustBe: 'must add up to 100%', afLeft: '{n}% still not assigned — shares must add up to 100%', afOver: '{n}% too much — shares must add up to 100%', afBalance: 'Balance to 100%',
       afSlots: '{n} services to assign in this range', svcShort: 'svc',
       addSpecial: 'Special service', addSpecialSub: 'e.g. Christmas on a Thursday', spPh: 'Christmas Eve', askAll: 'Ask the group — first to accept', spNote: 'If no one is assigned, the bot asks the group and the first member to accept takes it.',
       telegram: 'Telegram bot', tgConnected: 'Connected', remBefore: 'Reminder, hours before',
@@ -938,7 +938,7 @@ class Component extends DCLogic {
       actual: 'факт', planned: 'план', noTarget: 'Цель не задана',
       members: 'Участники', addMember: 'Добавить', edit: 'Изменить',
       autofill: 'Автозаполнение', autofillSub: 'Распределить службы по доле каждого', afSub: 'Назначает утренние и вечерние службы в диапазоне.',
-      afTargets: 'Доля служб', afTotal: 'Всего', afMustBe: 'должно быть 100%', afBalance: 'Выровнять до 100%',
+      afTargets: 'Доля служб', afTotal: 'Всего', afMustBe: 'должно быть 100%', afLeft: 'Не распределено ещё {n}% — в сумме должно быть 100%', afOver: 'Лишние {n}% — в сумме должно быть 100%', afBalance: 'Выровнять до 100%',
       afSlots: 'служб к назначению в диапазоне: {n}', svcShort: 'сл.',
       addSpecial: 'Особая служба', addSpecialSub: 'например, Рождество в четверг', spPh: 'Сочельник', askAll: 'Спросить группу — кто первый', spNote: 'Если никто не назначен, бот спросит группу — служба достанется первому, кто примет её.',
       telegram: 'Телеграм-бот', tgConnected: 'Подключен', remBefore: 'Напоминание, часов до',
@@ -1907,7 +1907,7 @@ class Component extends DCLogic {
         padding: '3px 11px', fontSize: '12px', fontWeight: 700,
         background: afValid ? '#e6f6ed' : '#fdebec', color: afValid ? '#2f9e64' : '#b4262b'
       },
-      afWarn: afValid ? '' : L.afMustBe,
+      afWarn: afValid ? '' : (afTotal < 100 ? L.afLeft : L.afOver).replace('{n}', Math.abs(100 - afTotal)),
       afShowBalance: !afValid && afTotal > 0,
       onAfBalance: () => {
         const scaled = afIds.map(id => ({ id, v: (+(dlg.pcts || {})[id] || 0) / afTotal * 100 }));
