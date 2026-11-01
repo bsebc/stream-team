@@ -1,0 +1,19 @@
+{
+  "name": "stream-team-tests",
+  "private": true,
+  "type": "module",
+  "description": "Local copy of the Stream Team stack for testing changes before they go live",
+  "scripts": {
+    "api": "node api_test.mjs",
+    "e2e": "node e2e_test.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/onest": "5.3.1",
+    "@fontsource-variable/unbounded": "5.3.0",
+    "@supabase/supabase-js": "2.118.0",
+    "esbuild": "^0.25.0",
+    "pg": "^8.16.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

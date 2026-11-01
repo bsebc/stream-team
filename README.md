@@ -1,78 +1,89 @@
 # Stream Team — livestream duty schedule
 
-Live at **https://stream.bsebc.com**
+Live at **https://stream.bsebc.com**. Schedules who runs the church livestream at each
+service, sends Telegram reminders, and handles hand-offs. English and Russian.
 
-## Files that go in the GitHub repo
+## How it fits together
+
+| Piece | Where | What it does |
+| --- | --- | --- |
+| `index.html` | GitHub Pages (this repo, `main`) | The whole app. Pushing to `main` publishes it. |
+| `supabase/functions/notify/index.ts` | Supabase Edge Function `notify` | **The only thing that writes to the database.** Validates every action, sends Telegram messages, runs the reminders. |
+| `supabase/migrations/*.sql` | Supabase SQL | Schema changes, in order. Each file is safe to re-run. |
+| `supabase/sql/cron.sql` | Supabase SQL | The hourly job that calls `notify` (already set up). |
+| `supabase/sql/schedule.sql` | — | Original setup and 2026 data. History only — **do not re-run**. |
+
+The browser can **read** the schedule (members, services, open requests, safe settings) and
+nothing else. Every change — confirm, request replacement, cover, ask, accept, decline,
+withdraw, and every admin action — is a `POST` to `notify`, which checks the change is
+allowed (your turn, still open, not cancelled, inside the confirm window, right PIN …)
+before making it. Two people tapping at once can't both win: the second gets a clear
+"someone else just took it".
+
+## Files in the repo root
 
 | File | What it is |
 | --- | --- |
-| `index.html` | The whole app |
-| `support.js` | Runtime the app needs. Must sit beside index.html |
-| `config.js` | **The only file you edit.** Your Supabase URL + publishable key |
-| `manifest.webmanifest`, `icon-*.png` | Makes "Add to Home Screen" install it like an app |
-| `CNAME` | Points the site at stream.bsebc.com |
-| `.nojekyll` | Stops GitHub rewriting filenames. Keep it, even though it is empty |
+| `index.html` | The app: a Design Component file (template + one `Component` class) |
+| `support.js` | Runtime for `index.html`. Generated — don't edit |
+| `config.js` | Supabase URL + **publishable** key (public by design; never put the secret key here) |
+| `vendor/supabase-js-2.118.0.js` | Pinned copy of supabase-js, served from this site instead of a CDN |
+| `fonts/` | Onest (text) and Unbounded (numbers), both with Cyrillic. OFL licences included |
+| `manifest.webmanifest`, `icon*.png`, `icon.svg`, `favicon-*` | Home-screen app icons |
+| `CNAME`, `.nojekyll` | Custom domain; stop GitHub rewriting paths. Keep both |
 
-The `supabase/` folder and `schedule.sql` are setup material — they do NOT
-need to be in the repo, though it is harmless (and good record-keeping) to
-keep them there.
+## Data model (schema `stream`)
 
-## Setting up config.js
-
-Open `config.js` and paste two values from
-**Supabase dashboard -> Project Settings -> API Keys**:
-
-```js
-window.STREAM_CONFIG = {
-  url: "https://abcdefgh.supabase.co",
-  key: "sb_publishable_..."
-};
-```
-
-Use the **publishable** key, not the secret key. The publishable key is meant to
-be public and is safe in a public repo — your row-level security policies are
-what protect the data. The secret key (`sb_secret_...`) must never appear here.
-
-Until you fill this in, the app shows an orange "Not connected yet" banner.
-
-## One setting to change before it works
-
-The app calls the Edge Function directly, so that function must accept calls
-without a Supabase user login:
-
-**Edge Functions -> notify -> Settings -> turn OFF "Verify JWT" / "Enforce JWT verification"**
-
-This is safe. Admin actions are guarded by the PIN, which the function checks on
-the server. Reminder sending and Telegram messages carry no privileged data.
-
-## Order of operations
-
-1. `schedule.sql` — creates tables, loads members and the 2026 schedule
-2. **Project Settings -> API -> Exposed schemas** -> add `stream`
-3. Deploy the `notify` function, add `TELEGRAM_TOKEN` and `TELEGRAM_GROUP` secrets, turn off Verify JWT
-4. `supabase/cron.sql` — schedules hourly reminders
-5. `supabase/step5.sql` — adds the settings view, grants and live updates
-6. Fill in `config.js`, push everything to GitHub, turn on Pages
-
-## How it behaves once live
-
-- Every phone reads the same schedule. Changes appear on other phones within a second (or 20 seconds if realtime is off).
-- **Who you are** is stored on your own device only. Tap the name pill in the top right, once.
-- **Request replacement** posts to the Telegram group; the first person to tap "I'll cover it" is put on the schedule and the group is told.
-- **Ask** sends a direct message to one person, who gets Accept / Decline in the app.
-- **Admin** actions need the PIN. It is verified server-side, so it cannot be read out of the page.
-- Reminders fire from Supabase on a schedule, so they work whether or not anyone has the app open.
+- **members** — `id`, `name`, `name_ru`, `telegram`, `share_pct`, `active`, `chat_id`
+  (hidden from the browser), `linked` (= has a chat id, so DMs work).
+- **services** — one row per service, id = date + part (`2026-11-08E`; specials `S2026-12-241900`).
+  `member_id`, `open` (replacement requested), `confirmed`, `notified`, `warned`,
+  `replaced_from` (hand-off history), `cancelled` (kept for the record).
+- **requests** — open calls for cover (`to_id` null) and direct asks. At most one
+  `pending` per service (enforced by a unique index).
+- **settings** — single row: admin PIN, reminder/last-call hours, time zone,
+  notification switches. Browser reads the safe columns via the `settings_public` view.
+- **rate_limits** — used by `notify` to slow PIN guessing and floods.
 
 ## Admin PIN
 
-Starts as **1234**. Change it immediately: Admin -> Change PIN.
+Checked in `notify` only. After 5 wrong tries from one network, sign-in pauses for 15
+minutes (30 wrong tries in an hour across everyone pauses it for an hour). New PINs must be
+at least 6 digits — change a 4-digit PIN from Admin → Change PIN.
 
-## If something looks wrong
+## Deploying changes
 
-| Symptom | Cause |
-| --- | --- |
-| Orange "Not connected yet" | `config.js` still has placeholder values |
-| Red "Cannot reach the database" | Wrong URL/key, or `stream` not in Exposed schemas |
-| Admin PIN always rejected | Verify JWT is still on for the `notify` function |
-| Schedule loads but no Telegram messages | Missing `TELEGRAM_TOKEN` / `TELEGRAM_GROUP` secret |
-| Reminders never arrive | Check `select * from cron.job_run_details order by start_time desc` |
+1. **Database:** add a new file in `supabase/migrations/` (idempotent: `if not exists`,
+   `create or replace`) and run it in the Supabase SQL editor (or via the Supabase connector).
+2. **Function:** Supabase → Edge Functions → `notify` → replace the code with
+   `supabase/functions/notify/index.ts` → Deploy. Keep the name `notify`.
+3. **App:** push to `main`. GitHub Pages publishes within a minute or two; browsers may
+   keep the old page for up to 10 minutes.
+
+If a function change reads a new column, run the SQL first.
+
+## Time zones and reminders
+
+Service times are wall-clock times in the zone set in Admin (America/New_York). Both the
+app and the bot convert with that zone, so daylight saving is handled. Reminders go out
+exactly `rem_hours` before the service — so across a clock change the 24-hour reminder for
+a Sunday 6 PM service arrives at 7 PM (autumn) or 5 PM (spring) on Saturday. That is
+expected.
+
+## Testing changes locally
+
+The app was rebuilt and tested against a local copy of the whole stack (Postgres with
+the same schema and policies, a PostgREST-compatible shim, the real `notify` code with a
+fake Telegram) before going live: 91 API checks (every action, races, PIN lockout,
+reminders) and 60 browser checks (every screen and flow, EN/RU, desktop). Ask Claude to
+"run the Stream Team test harness" to repeat them.
+
+## Changelog
+
+### 2026-11-01 — redesign and hardening
+- New design: native-feeling layout, bottom sheets, tally-light status lamps, dark mode,
+  Russian times in 24-hour format, skeleton loading, clearer errors and toasts.
+- All writes moved server-side; the database is read-only for the browser.
+- PIN brute-force protection, Telegram HTML escaping, reminders can't double-post,
+  inactive members get no reminders, deleting a member no longer fails, auto-fill clears
+  stale requests, calendar export uses UTC times.
